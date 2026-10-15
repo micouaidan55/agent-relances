@@ -4,10 +4,10 @@ from pathlib import Path
 import pytest
 from streamlit.testing.v1 import AppTest
 
-from agent_relances.models import ReminderStatus
+from agent_relances.models import ReminderDraft, ReminderStatus
 from agent_relances.storage.db import connect
 from agent_relances.storage.repository import ReminderStore
-from tests.factories import client, factures_conn, issued
+from tests.factories import client, due_reminder, factures_conn, issued, overdue
 
 APP_PATH = str(Path(__file__).resolve().parent.parent / "app" / "main.py")
 PAGES = ["app_pages/clients.py", "app_pages/tableau_de_bord.py", "app_pages/journal_validees.py",
@@ -123,3 +123,31 @@ def test_dashboard_metrics(env):
     at = run_app("app_pages/tableau_de_bord.py")
     labels = [m.label for m in at.metric]
     assert "Montant en retard" in labels and "Encaissé après relance" in labels
+
+
+def test_selecting_an_existing_client_prefills_the_form(env):
+    _, store = env
+    at = run_app("app_pages/clients.py")
+    assert at.text_input(key="fiche-email").value == ""
+    at.selectbox(key="fiche-choix").select("Hôtel des Canuts").run()
+    assert not at.exception
+    assert at.text_input(key="fiche-email").value == "compta@hotel-canuts.fr"
+    assert at.text_input(key="fiche-contact").value == "Paul Girard"
+    at.text_input(key="fiche-contact").set_value("Anne Morel")
+    at.button(key="FormSubmitter:fiche-Enregistrer la fiche").click().run()
+    assert store.get_client("hôtel des canuts").contact == "Anne Morel"
+    assert store.get_client("hôtel des canuts").email == "compta@hotel-canuts.fr"
+    assert at.selectbox(key="fiche-choix").value == "Nouvelle fiche" and at.text_input(key="fiche-email").value == ""
+    at.selectbox(key="fiche-choix").select("Hôtel des Canuts").run()
+    at.selectbox(key="fiche-choix").select("Nouvelle fiche").run()
+    assert at.text_input(key="fiche-nom").value == "" and at.checkbox(key="fiche-pro").value
+
+
+def test_client_history_expander_lists_the_validated_reminder(env):
+    _, store = env
+    store.add_validated(due_reminder(invoices=[overdue(1, "AL-2026-101")]), ReminderDraft(subject="S", body="B"),
+                        date(2026, 10, 10))
+    at = run_app("app_pages/clients.py")
+    [expander] = [e for e in at.expander if "Hôtel des Canuts" in e.label]
+    text = " ".join(m.value for m in expander.markdown)
+    assert "10/10/2026" in text and "palier 1" in text and "Validée" in text and "AL" in text and "2026" in text

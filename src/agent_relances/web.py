@@ -27,6 +27,11 @@ load_dotenv()
 
 PROFILE_LABELS = {Profile.GOOD: "Bon payeur", Profile.OCCASIONAL: "Occasionnel", Profile.CHRONIC: "Retardataire chronique"}
 TONE_LABELS = {Tone.LIGHT: "Léger", Tone.NEUTRAL: "Neutre", Tone.FIRM: "Ferme"}
+STATUS_LABELS = {
+    ReminderStatus.TO_VALIDATE: "À valider", ReminderStatus.VALIDATED: "Validée", ReminderStatus.POSTPONED: "Reportée",
+    ReminderStatus.HUMAN: "À traiter par un humain", ReminderStatus.CANCELLED: "Annulée",
+}
+NEW_CARD = "Nouvelle fiche"
 SOURCE_LABELS = {DraftSource.MODEL: "Rédigée par Claude, faits vérifiés", DraftSource.FALLBACK: "Modèle de texte de secours"}
 
 _MD_SPECIAL = set("\\`*_{}[]()#+-.!|<>:~$&")
@@ -173,6 +178,17 @@ def render_today_page() -> None:
         _render_reminder(reminder, reminders, source)
 
 
+def _fill_card(client: Client | None) -> None:
+    """Préremplit le formulaire de fiche, ou le vide : à appeler avant la création des champs (ou en rappel)."""
+    name, email, contact, notes, professional = (
+        (client.name, client.email, client.contact, client.notes, client.professional) if client
+        else ("", "", "", "", True))
+    st.session_state.update({"fiche-nom": name, "fiche-email": email, "fiche-contact": contact,
+                             "fiche-notes": notes, "fiche-pro": professional})
+    if client is None:
+        st.session_state["fiche-choix"] = NEW_CARD
+
+
 def render_clients_page() -> None:
     reminders = store()
     source = _source_or_error()
@@ -185,13 +201,20 @@ def render_clients_page() -> None:
     if missing:
         st.warning("Clients avec des factures en retard et une fiche à compléter : "
                    + ", ".join(md_escape(name) for name in missing))
-    with st.form("fiche", clear_on_submit=True):
+    _flash()
+    if st.session_state.pop("fiche-reset", False):
+        _fill_card(None)
+    by_name = {c.name: c for c in clients}
+    st.selectbox("Modifier une fiche existante", [NEW_CARD, *by_name], key="fiche-choix",
+                 on_change=lambda: _fill_card(by_name.get(st.session_state["fiche-choix"])))
+    st.session_state.setdefault("fiche-pro", True)
+    with st.form("fiche"):
         st.subheader("Créer ou modifier une fiche")
         name = st.text_input("Nom du client, tel qu'il figure sur les factures", key="fiche-nom")
         email = st.text_input("Email", key="fiche-email")
         contact = st.text_input("Nom du contact", key="fiche-contact")
         notes = st.text_area("Notes (servent au ton, jamais citées)", key="fiche-notes")
-        professional = st.checkbox("Client professionnel", value=True, key="fiche-pro")
+        professional = st.checkbox("Client professionnel", key="fiche-pro")
         if st.form_submit_button("Enregistrer la fiche"):
             if not name.strip():
                 st.error("Le nom du client est obligatoire.")
@@ -201,8 +224,9 @@ def render_clients_page() -> None:
                 reminders.save_client(Client(name=name, email=email, contact=contact, notes=notes,
                                              professional=professional))
                 reminders.log(None, "fiche_enregistree", {"client": name.strip()})
-                st.success(f"Fiche enregistrée : {md_escape(name.strip())}")
-                clients = reminders.list_clients()
+                st.session_state["flash"] = ("success", f"Fiche enregistrée : {md_escape(name.strip())}")
+                st.session_state["fiche-reset"] = True
+                st.rerun()
     if not clients:
         st.info("Aucune fiche client pour l'instant.")
         return
@@ -219,6 +243,19 @@ def render_clients_page() -> None:
         "Factures en retard": counts.get(c.key, 0),
         "Relances validées": validated.get(c.key, 0),
     } for c in clients]), hide_index=True)
+    history_by_client: dict[str, list[StoredReminder]] = {}
+    for reminder in reminders.list_reminders():
+        history_by_client.setdefault(reminder.client_key, []).append(reminder)
+    for c in clients:
+        items = history_by_client.get(c.key, [])
+        with st.expander(f"Historique des relances — {md_escape(c.name)} ({len(items)})"):
+            if not items:
+                st.caption("Aucune relance pour ce client.")
+            for reminder in items:
+                when = date_fr(reminder.decided_on or reminder.prepared_on)
+                numbers = ", ".join(i.number for i in reminder.invoices)
+                st.markdown(f"{when} · palier {int(reminder.stage)} · {STATUS_LABELS[reminder.status]} · "
+                            f"{md_escape(numbers)}")
 
 
 def render_dashboard_page() -> None:
