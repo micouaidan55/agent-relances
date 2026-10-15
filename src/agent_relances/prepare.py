@@ -27,7 +27,7 @@ def prepare_draft(api, due: DueReminder, company: str, model: str = WRITER_MODEL
     problems: list[str] = ["Clé d'API absente : modèle de secours utilisé."]
     if api is not None:
         problems = []
-        for attempt in range(2):
+        for attempt in range(2):  # les erreurs d'API passagères sont déjà rejouées par le SDK
             try:
                 draft, step = write_draft(api, due, company, model, problems)
             except StepError as exc:
@@ -38,6 +38,7 @@ def prepare_draft(api, due: DueReminder, company: str, model: str = WRITER_MODEL
                 problems = [f"Erreur d'API Claude ({type(exc).__name__})"]
                 break
             usage += step
+            draft = ReminderDraft(subject=" ".join(draft.subject.split()), body=draft.body)
             problems = check_draft(draft, due)
             if not problems:
                 return PreparedReminder(due=due, draft=draft, source=DraftSource.MODEL, first_try_ok=attempt == 0,
@@ -85,6 +86,7 @@ class ValidationResult:
 
 def validate_reminder(store: ReminderStore, source: InvoiceSource, reminder_id: int, subject: str, body: str,
                       outbox: Path, today: date) -> ValidationResult:
+    subject = " ".join(subject.split())
     stored = store.get(reminder_id)
     if stored is None or stored.status is not ReminderStatus.TO_VALIDATE:
         return ValidationResult(ok=False, problems=["Relance introuvable ou déjà traitée."])

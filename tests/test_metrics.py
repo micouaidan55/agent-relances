@@ -29,4 +29,15 @@ def test_dashboard():
     assert board.by_stage["Pas encore relancée"] == 1 and board.by_stage["Palier 1 fait"] == 1
     assert (board.recovered_total, board.recovered_count, board.mean_days_to_payment) == (Decimal("500.00"), 1, 4.0)
     assert (board.validated, board.pending) == (2, 1)
-    assert abs(board.fallback_rate - 1 / 3) < 1e-9
+    assert board.fallback_rate == 1.0 and abs(board.mean_cost_usd - 0.002) < 1e-9   # seul le brouillon préparé compte
+
+
+def test_cost_and_fallback_rate_ignore_imported_history():
+    conn, _ = factures_conn()
+    store = ReminderStore(connect())
+    store.add_validated(due_reminder(), ReminderDraft(subject="S", body="B"), TODAY, source=DraftSource.FALLBACK)
+    store.add_prepared(PreparedReminder(due=due_reminder(), draft=ReminderDraft(subject="S", body="B"),
+                                        source=DraftSource.MODEL, first_try_ok=True, usage=Usage(cost_usd=0.01)))
+    board = dashboard(InvoiceSource(conn), store, TODAY)
+    assert board.validated == 1 and board.pending == 1
+    assert board.fallback_rate == 0.0 and abs(board.mean_cost_usd - 0.01) < 1e-9

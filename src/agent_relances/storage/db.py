@@ -32,7 +32,8 @@ CREATE TABLE IF NOT EXISTS reminders (
     prepared_on TEXT NOT NULL,
     decided_on TEXT,
     postponed_until TEXT,
-    eml_path TEXT
+    eml_path TEXT,
+    origin TEXT NOT NULL DEFAULT 'app'
 );
 CREATE TABLE IF NOT EXISTS reminder_invoices (
     reminder_id INTEGER NOT NULL,
@@ -60,4 +61,8 @@ def connect(path: str = ":memory:") -> sqlite3.Connection:
     conn = sqlite3.connect(path, check_same_thread=False)
     conn.row_factory = sqlite3.Row
     conn.executescript(SCHEMA)
+    columns = {row["name"] for row in conn.execute("PRAGMA table_info(reminders)")}
+    if "origin" not in columns:  # bases créées avant l'ajout de la colonne
+        conn.execute("ALTER TABLE reminders ADD COLUMN origin TEXT NOT NULL DEFAULT 'app'")
+        conn.commit()
     return conn

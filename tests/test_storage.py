@@ -89,3 +89,18 @@ def test_add_validated_history(store):
 def test_log(store):
     store.log(1, "validee", {"fichier": "r.eml"})
     assert store.list_log()[0]["detail"] == {"fichier": "r.eml"}
+
+
+def test_connect_adds_the_origin_column_to_an_older_database(tmp_path):
+    import sqlite3
+    path = str(tmp_path / "old.db")
+    old = sqlite3.connect(path)
+    old.executescript("CREATE TABLE reminders (id INTEGER PRIMARY KEY, client_key TEXT, client_name TEXT, stage INTEGER,"
+                      " status TEXT, prepared_on TEXT);"
+                      "INSERT INTO reminders (client_key, client_name, stage, status, prepared_on)"
+                      " VALUES ('a', 'A', 1, 'a_valider', '2026-10-01');")
+    old.commit()
+    old.close()
+    conn = connect(path)
+    connect(path)                                                   # idempotent
+    assert conn.execute("SELECT origin FROM reminders").fetchone()["origin"] == "app"

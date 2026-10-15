@@ -35,6 +35,7 @@ class StoredReminder(BaseModel):
     decided_on: date | None
     postponed_until: date | None
     eml_path: str | None
+    origin: str = "app"
     invoices: list[OverdueInvoice]
     invoice_stages: dict[int, int]
 
@@ -85,15 +86,16 @@ class ReminderStore:
 
     def _insert(self, due: DueReminder, status: ReminderStatus, draft: ReminderDraft, source: DraftSource,
                 first_try_ok: bool = True, problems: list[str] | None = None, cost_usd: float = 0.0,
-                seconds: float = 0.0, decided_on: date | None = None, eml_path: str | None = None) -> int:
+                seconds: float = 0.0, decided_on: date | None = None, eml_path: str | None = None,
+                origin: str = "app") -> int:
         cursor = self._conn.execute(
             "INSERT INTO reminders (client_key, client_name, stage, tone, profile, legal_notice, status, subject, body,"
-            " original_body, source, first_try_ok, problems, cost_usd, seconds, prepared_on, decided_on, eml_path)"
-            " VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)",
+            " original_body, source, first_try_ok, problems, cost_usd, seconds, prepared_on, decided_on, eml_path,"
+            " origin) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)",
             (due.client.key, due.client.name, int(due.stage), due.tone.value, due.profile.value, int(due.legal_notice),
              status.value, draft.subject, draft.body, draft.body, source.value, int(first_try_ok),
              json.dumps(problems or [], ensure_ascii=False), cost_usd, seconds, due.today.isoformat(),
-             decided_on.isoformat() if decided_on else None, eml_path),
+             decided_on.isoformat() if decided_on else None, eml_path, origin),
         )
         reminder_id = cursor.lastrowid
         self._insert_invoices(reminder_id, due.invoices, due.invoice_stages, int(due.stage))
@@ -115,7 +117,9 @@ class ReminderStore:
 
     def add_validated(self, due: DueReminder, draft: ReminderDraft, decided_on: date,
                       source: DraftSource = DraftSource.MODEL, eml_path: str | None = None) -> int:
-        return self._insert(due, ReminderStatus.VALIDATED, draft, source, decided_on=decided_on, eml_path=eml_path)
+        """Relance passée, déjà validée : elle compte pour l'historique mais pas pour les mesures de rédaction."""
+        return self._insert(due, ReminderStatus.VALIDATED, draft, source, decided_on=decided_on, eml_path=eml_path,
+                            origin="historique")
 
     def add_escalation(self, invoice: OverdueInvoice, today: date) -> int:
         cursor = self._conn.execute(
@@ -230,6 +234,7 @@ class ReminderStore:
                 first_try_ok=bool(row["first_try_ok"]), problems=json.loads(row["problems"]),
                 cost_usd=row["cost_usd"], seconds=row["seconds"], prepared_on=row["prepared_on"],
                 decided_on=row["decided_on"], postponed_until=row["postponed_until"], eml_path=row["eml_path"],
+                origin=row["origin"],
                 invoices=[OverdueInvoice(invoice_id=i["invoice_id"], number=i["number"], customer=i["customer"],
                                          amount=Decimal(i["amount"]), issue_date=i["issue_date"],
                                          due_date=i["due_date"], days_late=i["days_late"]) for i in invoice_rows],

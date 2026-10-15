@@ -18,7 +18,7 @@ C'est le troisième projet d'une suite d'agents pour PME : [agent-factures](http
 
 30 scénarios générés couvrent chaque combinaison palier × profil, les particuliers (sans mention des 40 €), les regroupements de 2 et 3 factures, le délai minimal, les fiches manquantes, le passage à un humain et une fiche client qui tente de donner des ordres au modèle.
 
-On mesure : l'exactitude des règles, l'exactitude des faits (dès le premier essai et après vérification), le **ton reconnu à l'aveugle** par un juge qui ne connaît ni le palier ni le profil, la note du juge, le recours au modèle de secours et le coût par relance.
+On mesure : l'exactitude des règles, les faits exacts selon le vérificateur (dès le premier essai et après vérification), le **ton reconnu à l'aveugle** par un juge qui ne connaît ni le palier ni le profil, la note du juge (l'adéquation du ton est mesurée par le ton deviné à l'aveugle), le recours au modèle de secours et le coût par relance.
 
 Les résultats chiffrés seront publiés ici après le premier run d'évaluation. Pour reproduire (payant, plafonné) : `uv run python -m evals.run --max-cost 1`.
 
@@ -28,11 +28,11 @@ Les résultats chiffrés seront publiés ici après le premier run d'évaluation
 git clone https://github.com/micouaidan55/agent-relances.git && cd agent-relances
 cp .env.example .env        # puis renseigner ANTHROPIC_API_KEY (facultatif : sans clé, le modèle de secours rédige)
 uv sync
-uv run python -m demo.seed  # base de démonstration ; mettre TODAY=2026-10-15 dans .env
+uv run python -m demo.seed  # base de démonstration ; TODAY=2026-10-15 est déjà dans .env.example ; à vider pour de vraies factures
 uv run streamlit run app/main.py
 ```
 
-La démonstration montre les trois paliers, un regroupement, un particulier, une fiche manquante, un passage à un humain et une facture encaissée après relance. Avec une clé d'API, préparer les relances du jour coûte environ 1 centime par relance.
+La démonstration montre les trois paliers, un regroupement, un particulier, une fiche manquante, un passage à un humain et une facture encaissée après relance. Avec une clé d'API, préparer les relances du jour coûte de l'ordre du centime par relance (à confirmer par l'évaluation).
 
 Pour relancer les vraies factures d'agent-factures, pointez `AGENT_FACTURES_DB` vers sa base (par exemple `../agent-factures/data/factures.db`) et videz `TODAY`.
 

@@ -105,3 +105,20 @@ def test_escalation_and_missing_cards_are_reported(tmp_path):
     assert result.missing_clients == ["Inconnu SARL"]
     assert [i.number for i in result.escalated] == ["AL-8"]
     assert store.list_reminders({ReminderStatus.HUMAN})
+
+
+def test_subject_with_a_newline_is_normalised_and_deposits_an_eml(tmp_path):
+    source, store, _, _ = setup(tmp_path)
+    multiline = ReminderDraft(subject="Rappel\nfacture AL-2026-101", body=GOOD.body)
+    result = prepare_draft(FakeClient([reply(multiline)]), due_reminder(), COMPANY)
+    assert result.source is DraftSource.MODEL and result.draft.subject == "Rappel facture AL-2026-101"
+    prepare_today(source, store, FakeClient([reply(multiline)]), COMPANY, TODAY)
+    [pending] = store.list_reminders({ReminderStatus.TO_VALIDATE})
+    outbox = tmp_path / "deposees"
+    done = validate_reminder(store, source, pending.id, "Rappel\r\nfacture AL-2026-101", GOOD.body, outbox, TODAY)
+    assert done.ok
+    [eml] = outbox.glob("*.eml")
+    content = eml.read_text()
+    assert "Subject: Rappel facture AL-2026-101" in content
+    assert "X-Unsent: 1" in content and "Date: " in content
+    assert store.get(pending.id).subject == "Rappel facture AL-2026-101"

@@ -42,7 +42,9 @@ def dashboard(source: InvoiceSource, store: ReminderStore, today: date) -> Dashb
                  if invoice_id in first and first[invoice_id] <= paid_at]
 
     reminders = store.list_reminders()
-    drafted = [r for r in reminders if r.body]  # les passages automatiques à un humain n'ont pas de mail
+    # Coût et secours se mesurent sur ce que l'application a préparé : ni les passages à un humain (sans mail),
+    # ni l'historique importé.
+    drafted = [r for r in reminders if r.body and r.origin == "app"]
     count = lambda status: sum(1 for r in reminders if r.status is status)  # noqa: E731
     return Dashboard(
         overdue_total=sum((i.amount for i in overdue), Decimal("0")),

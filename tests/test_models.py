@@ -1,6 +1,8 @@
 from datetime import date
 from decimal import Decimal
 
+import pytest
+
 from agent_relances.formatting import date_fr, euros
 from agent_relances.models import (
     Client, DueReminder, OverdueInvoice, PaymentRecord, Profile, Stage, Tone, Usage, client_key,
@@ -41,3 +43,12 @@ def test_usage_adds_up():
 def test_french_formats():
     assert euros(Decimal("1200.5")) == "1 200,50 €"
     assert date_fr(date(2026, 10, 1)) == "01/10/2026"
+
+
+@pytest.mark.parametrize("email,complete", [
+    ("compta@hotel-canuts.fr", True), (" compta@hotel-canuts.fr ", True), ("a@b.fr, x@y.fr", False),
+    ("a@b.fr; x@y.fr", False), ("a@b", False), ("@b.fr", False), ("", False), ("Paul <a@b.fr>", False),
+    ("a b@c.fr", False),
+])
+def test_client_is_complete_only_with_one_well_formed_address(email, complete):
+    assert Client(name="A", email=email).complete is complete

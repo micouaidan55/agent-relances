@@ -1,8 +1,10 @@
 """Modèles de données de l'agent de relance."""
 
+import re
 import unicodedata
 from datetime import date
 from decimal import Decimal
+from email.utils import parseaddr
 from enum import IntEnum, StrEnum
 
 from pydantic import BaseModel, Field
@@ -65,7 +67,10 @@ class Client(BaseModel):
 
     @property
     def complete(self) -> bool:
-        return "@" in self.email
+        name, address = parseaddr(self.email)
+        local, _, domain = address.partition("@")
+        return (not name and address == self.email.strip() and bool(local) and "." in domain
+                and not domain.startswith(".") and not domain.endswith(".") and not re.search(r"[,;\s]", address))
 
 
 class OverdueInvoice(BaseModel):

@@ -33,3 +33,13 @@ def test_seed_replaces_previous_demo_files(tmp_path):
     seed(factures, relances)
     seed(factures, relances)
     assert len(ReminderStore(connect(str(relances))).list_clients()) == 8
+
+
+def test_historical_reminders_are_fallback_texts_outside_the_metrics(tmp_path):
+    factures, relances = tmp_path / "f.db", tmp_path / "r.db"
+    seed(factures, relances)
+    store = ReminderStore(connect(str(relances)))
+    history = store.list_reminders()
+    assert history and all(r.source.value == "secours" and r.origin == "historique" for r in history if r.body)
+    board = dashboard(InvoiceSource.open_readonly(factures), store, DEMO_TODAY)
+    assert board.fallback_rate is None and board.mean_cost_usd == 0.0

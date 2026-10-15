@@ -14,7 +14,7 @@ from agent_factures.storage.db import connect as connect_factures
 from agent_factures.storage.repository import InvoiceRepository
 
 from agent_relances.drafting.fallback import fallback_draft
-from agent_relances.models import Client, DueReminder, OverdueInvoice, Profile, Stage, Tone
+from agent_relances.models import Client, DraftSource, DueReminder, OverdueInvoice, Profile, Stage, Tone
 from agent_relances.storage.db import connect as connect_relances
 from agent_relances.storage.repository import ReminderStore
 
@@ -65,7 +65,7 @@ def seed(factures_path: Path, relances_path: Path, today: date = DEMO_TODAY) -> 
         due = DueReminder(client=clients[customer], profile=Profile.OCCASIONAL, stage=stage, tone=Tone.NEUTRAL,
                           invoices=invoices, invoice_stages={i: int(stage) for i, _ in items},
                           legal_notice=stage is Stage.FINAL and clients[customer].professional, today=decided)
-        store.add_validated(due, fallback_draft(due, COMPANY), decided)
+        store.add_validated(due, fallback_draft(due, COMPANY), decided, source=DraftSource.FALLBACK)
 
     # Historique de paiement : bon payeur, occasionnel, retardataire chronique.
     for n, (days_ago, late) in enumerate([(150, 2), (110, 1), (70, 3)]):
