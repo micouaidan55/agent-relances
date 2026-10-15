@@ -66,13 +66,13 @@ def prepare_today(source: InvoiceSource, store: ReminderStore, api, company: str
         store.log(reminder_id, "passage_humain_auto", {"facture": invoice.number, "retard_jours": invoice.days_late})
     for due in schedule.reminders:
         prepared = prepare_draft(api, due, company, model)
+        if on_progress:
+            on_progress(prepared)
         reminder_id = store.add_prepared(prepared)
         store.log(reminder_id, "preparee", {"client": due.client.name, "palier": int(due.stage),
                                             "source": prepared.source.value,
                                             "cout_usd": round(prepared.usage.cost_usd, 5)})
         result.prepared.append(prepared)
-        if on_progress:
-            on_progress(prepared)
     return result
 
 
