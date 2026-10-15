@@ -1,0 +1,10 @@
+.env
+__pycache__/
+*.pyc
+.venv/
+*.db
+.pytest_cache/
+data/
+.DS_Store
+.superpowers/
+.playwright-mcp/
