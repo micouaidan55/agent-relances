@@ -88,8 +88,14 @@ def compare(scenario: dict, result: prepare.PreparationResult) -> list[str]:
 
 
 def evaluate(scenarios: list[dict], api, model: str, company: str, judge_api=None, max_cost: float | None = None,
-             on_line=print) -> tuple[list[ScenarioOutcome], list[ReminderOutcome], float, bool]:
-    scenario_outcomes, reminder_outcomes, total = [], [], 0.0
+             on_line=print, scenario_outcomes: list[ScenarioOutcome] | None = None,
+             reminder_outcomes: list[ReminderOutcome] | None = None,
+             totals: dict | None = None) -> tuple[list[ScenarioOutcome], list[ReminderOutcome], float, bool]:
+    """Les listes et `totals` fournis par l'appelant sont remplis au fil de l'eau : un plantage ne perd rien."""
+    scenario_outcomes = [] if scenario_outcomes is None else scenario_outcomes
+    reminder_outcomes = [] if reminder_outcomes is None else reminder_outcomes
+    totals = {} if totals is None else totals
+    totals.setdefault("cost", 0.0)
     for scenario in scenarios:
         source, store, today = build(scenario)
         result = prepare.prepare_today(source, store, api, company, today, model=model)
@@ -97,17 +103,18 @@ def evaluate(scenarios: list[dict], api, model: str, company: str, judge_api=Non
         scenario_outcomes.append(ScenarioOutcome(scenario["id"], not differences, differences))
         expected_tones = {r["client"]: r["tone"] for r in scenario["expected"]["reminders"]}
         for prepared in result.prepared:
-            total += prepared.usage.cost_usd
+            totals["cost"] += prepared.usage.cost_usd
             judge = None
             if judge_api is not None:
                 try:
                     score, usage = judge_reminder(judge_api, prepared.draft)
                     judge = score.model_dump(mode="json")
-                    total += usage.cost_usd
+                    totals["cost"] += usage.cost_usd
                 except StepError as exc:
-                    total += exc.usage.cost_usd
-                except anthropic.APIError:
-                    pass
+                    totals["cost"] += exc.usage.cost_usd
+                    on_line(f"  Juge indisponible pour {prepared.due.client.name} : {exc}")
+                except anthropic.APIError as exc:
+                    on_line(f"  Juge indisponible pour {prepared.due.client.name} : {type(exc).__name__}")
             reminder_outcomes.append(ReminderOutcome(
                 scenario=scenario["id"], client=prepared.due.client.name,
                 expected_tone=expected_tones.get(prepared.due.client.name, prepared.due.tone.value),
@@ -116,11 +123,11 @@ def evaluate(scenarios: list[dict], api, model: str, company: str, judge_api=Non
                 cost_usd=prepared.usage.cost_usd, seconds=prepared.seconds,
             ))
         on_line(f"{scenario['id']} {'OK ' if not differences else 'ÉCART'} {len(result.prepared)} relance(s)"
-                f" — cumul {total:.4f} $")
-        if max_cost is not None and total >= max_cost:
+                f" — cumul {totals['cost']:.4f} $")
+        if max_cost is not None and totals["cost"] >= max_cost:
             on_line(f"Budget de {max_cost:.2f} $ atteint : arrêt après {len(scenario_outcomes)} scénarios.")
-            return scenario_outcomes, reminder_outcomes, total, True
-    return scenario_outcomes, reminder_outcomes, total, False
+            return scenario_outcomes, reminder_outcomes, totals["cost"], True
+    return scenario_outcomes, reminder_outcomes, totals["cost"], False
 
 
 def main() -> None:
@@ -137,12 +144,13 @@ def main() -> None:
         sys.exit(1)
     scenarios = json.loads(args.dataset.read_text())
     api = anthropic.Anthropic()
-    outcomes, reminders, total, stopped = [], [], 0.0, True
+    outcomes, reminders, totals, stopped = [], [], {"cost": 0.0}, True
     try:
-        outcomes, reminders, total, stopped = evaluate(scenarios, api, args.model, COMPANY,
-                                                       judge_api=None if args.no_judge else api,
-                                                       max_cost=args.max_cost)
+        _, _, _, stopped = evaluate(scenarios, api, args.model, COMPANY, judge_api=None if args.no_judge else api,
+                                    max_cost=args.max_cost, scenario_outcomes=outcomes, reminder_outcomes=reminders,
+                                    totals=totals)
     finally:
+        total = totals["cost"]
         partial = stopped or len(outcomes) < len(scenarios)
         label = args.model + (f" (partiel : {len(outcomes)}/{len(scenarios)} scénarios)" if partial else "")
         stem = args.model + ("__partiel" if partial else "")
