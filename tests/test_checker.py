@@ -36,6 +36,10 @@ def draft(body, subject="Rappel facture AL-2026-101"):
     ("EUR 300", {Decimal("300")}),
     ("40 euros et 12 480,00 EUR", {Decimal("40"), Decimal("12480")}),
     ("le 15 octobre, 3 factures", set()),
+    ("9 999,99", {Decimal("9999.99")}),
+    ("7 k€", {Decimal("7000")}),
+    ("2,5 k€", {Decimal("2500")}),
+    ("1 200,50 € puis 1 200,50", {Decimal("1200.50")}),
 ])
 def test_amounts_in(text, expected):
     assert amounts_in(text) == expected
@@ -52,6 +56,10 @@ def test_amounts_in(text, expected):
     ("22 oct.", {(22, 10, None)}),
     ("1 er octobre", {(1, 10, None)}),
     ("12.05 €", set()),
+    ("avant le 30-10", {(30, 10, None)}),
+    ("avant le 30.10.", {(30, 10, None)}),
+    ("12,50 et 22-10-2026", {(22, 10, 2026)}),
+    ("9 999,99 et 12.05 €", set()),
 ])
 def test_dates_in(text, expected):
     assert dates_in(text) == expected
@@ -88,6 +96,11 @@ def test_equivalent_date_format_passes():
     (GOOD + " Frais : € 300.", "Montant non prévu : 300,00 €"),
     (GOOD + " Frais : EUR 300.", "Montant non prévu : 300,00 €"),
     (GOOD + " Frais : 1250,505 €.", "Montant non prévu : 1 250,505 €"),
+    (GOOD + " Une remise de 20 % est accordée.", "Pourcentage non prévu : 20 %"),
+    (GOOD + " Soit vingt pour cent de remise.", "Pourcentage non prévu : pour cent"),
+    (GOOD + " Frais : 9 999,99.", "Montant non prévu : 9 999,99 €"),
+    (GOOD + " Frais : 7 k€.", "Montant non prévu : 7 000,00 €"),
+    (GOOD + " Merci de régler avant le 30-10.", "Date non prévue : 30/10"),
     (GOOD + " " + LEGAL_NOTICE, "Mention légale de l'indemnité forfaitaire non prévue"),
     (GOOD.replace("AL-2026-101", "AL-2026-1010"), "Numéro de facture absent : AL-2026-101"),
 ])
@@ -101,6 +114,23 @@ def test_grouped_reminder_needs_the_total():
             "Merci de nous indiquer la date de règlement.")
     assert check_draft(draft(body), TWO) == ["Montant absent : 1 300,00 €"]
     assert check_draft(draft(body + " Total dû : 1 300,00 €."), TWO) == []
+
+
+SWAP = ("Factures :\nAL-2026-101 : 99,50 €, échue le 05/10/2026\nAL-2026-107 : 1 200,50 €, échue le 01/10/2026\n"
+        "Total dû : 1 300,00 €.")
+RIGHT = ("Factures :\nAL-2026-101 : 1 200,50 €, échue le 01/10/2026\nAL-2026-107 : 99,50 €, échue le 05/10/2026\n"
+         "Total dû : 1 300,00 €.")
+
+
+def test_swapped_amounts_and_dates_between_invoices_are_reported():
+    assert check_draft(draft(RIGHT), TWO) == []
+    assert check_draft(draft(SWAP), TWO) == ["Montant ou échéance non rattaché à la facture AL-2026-101",
+                                             "Montant ou échéance non rattaché à la facture AL-2026-107"]
+
+
+def test_one_swapped_date_is_reported_for_one_invoice():
+    body = RIGHT.replace("échue le 05/10/2026", "échue le 01/10/2026")
+    assert "Montant ou échéance non rattaché à la facture AL-2026-107" in check_draft(draft(body), TWO)
 
 
 def test_legal_notice_required_at_the_last_stage_for_professionals():

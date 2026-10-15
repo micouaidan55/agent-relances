@@ -15,10 +15,15 @@ _NUMBER = r"(?:\d{1,3}(?:[ .,]\d{3})+(?:[.,]\d+)?|\d+(?:[.,]\d+)?)"
 _CURRENCY = r"(?:€|(?<!\w)eur(?!\w)|(?<!\w)euros?(?!\w))"
 _AMOUNT = re.compile(
     rf"(?<!\d)(?:(?P<after>{_NUMBER})\s?{_CURRENCY}|{_CURRENCY}\s?(?P<before>{_NUMBER}))", re.IGNORECASE)
+# Nombre décimal à la française sans devise (« 9 999,99 »), compté comme un montant.
+_BARE_AMOUNT = re.compile(r"(?<![\d.,])(?P<bare>(?:\d{1,3}(?:[ .]\d{3})+|\d+),\d{2})(?![\d])")
+_K_AMOUNT = re.compile(rf"(?<!\d)(?P<k>{_NUMBER})\s?k\s?{_CURRENCY}", re.IGNORECASE)
+_PERCENT = re.compile(r"\d+(?:[.,]\d+)?\s?%|(?<!\w)pour\s+cent(?!\w)", re.IGNORECASE)
 _PARTS = re.compile(r"(?P<int>\d{1,3}(?:[ .,]\d{3})+|\d+)(?:[.,](?P<dec>\d+))?")
 
 _SLASH_DATE = re.compile(r"(?<![\d/])(\d{1,2})/(\d{1,2})(?:/(\d{4}|\d{2}))?(?![\d/])")
 _DOTTED_DATE = re.compile(r"(?<![\d/.\-])(\d{1,2})([.\-])(\d{1,2})\2(\d{4}|\d{2})(?!\d|[/.\-]\d)")
+_SHORT_DATE = re.compile(r"(?<![\d/.\-])(\d{1,2})([.\-])(\d{2})(?![\d/\-]|[.,]\d)")
 _ISO_DATE = re.compile(r"(?<![\d/.\-])(\d{4})-(\d{1,2})-(\d{1,2})(?!\d|[/.\-]\d)")
 _MONTHS = {"janvier": 1, "janv": 1, "fevrier": 2, "fevr": 2, "mars": 3, "avril": 4, "avr": 4, "mai": 5,
            "juin": 6, "juillet": 7, "juil": 7, "aout": 8, "septembre": 9, "sept": 9, "octobre": 10, "oct": 10,
@@ -42,18 +47,30 @@ def _year(value: str) -> int:
     return int(value) + 2000 if len(value) == 2 else int(value)
 
 
+def _strip_amounts(text: str) -> str:
+    text = _K_AMOUNT.sub(" ", text)
+    text = _AMOUNT.sub(" ", text)
+    return _BARE_AMOUNT.sub(" ", text)
+
+
 def amounts_in(text: str) -> set[Decimal]:
-    return {_parse_amount(m["after"] or m["before"]) for m in _AMOUNT.finditer(text.translate(_SPACES))}
+    text = text.translate(_SPACES)
+    found = {_parse_amount(m["after"] or m["before"]) for m in _AMOUNT.finditer(text)}
+    found |= {_parse_amount(m["k"]) * 1000 for m in _K_AMOUNT.finditer(text)}
+    found |= {_parse_amount(m["bare"]) for m in _BARE_AMOUNT.finditer(_AMOUNT.sub(" ", _K_AMOUNT.sub(" ", text)))}
+    return found
 
 
 def dates_in(text: str) -> set[tuple[int, int, int | None]]:
     """Dates (jour, mois, année ou None) ; les montants sont retirés avant, pour ne pas lire « 12.05 € » comme une date."""
-    text = _AMOUNT.sub(" ", text.translate(_SPACES))
+    text = _strip_amounts(text.translate(_SPACES))
     found = set()
     for m in _SLASH_DATE.finditer(text):
         found.add((int(m[1]), int(m[2]), _year(m[3]) if m[3] else None))
     for m in _DOTTED_DATE.finditer(text):
         found.add((int(m[1]), int(m[3]), _year(m[4])))
+    for m in _SHORT_DATE.finditer(text):
+        found.add((int(m[1]), int(m[3]), None))
     for m in _ISO_DATE.finditer(text):
         found.add((int(m[3]), int(m[2]), int(m[1])))
     for m in _TEXT_DATE.finditer(_plain(text)):
@@ -63,6 +80,20 @@ def dates_in(text: str) -> set[tuple[int, int, int | None]]:
 
 def _invoice_pattern(number: str) -> re.Pattern:
     return re.compile(rf"(?<![\w-]){re.escape(number)}(?![\w-])", re.IGNORECASE)
+
+
+def _segments(text: str, due: DueReminder) -> dict[str, list[str]]:
+    """Pour chaque facture, les bouts de texte qui suivent son numéro, jusqu'au prochain numéro ou à la fin de la ligne."""
+    spots = sorted((m.start(), m.end(), invoice.number) for invoice in due.invoices
+                   for m in _invoice_pattern(invoice.number).finditer(text))
+    segments: dict[str, list[str]] = {invoice.number: [] for invoice in due.invoices}
+    for index, (_, end, number) in enumerate(spots):
+        stop = text.find("\n", end)
+        stop = len(text) if stop == -1 else stop
+        if index + 1 < len(spots):
+            stop = min(stop, spots[index + 1][0])
+        segments[number].append(text[end:stop])
+    return segments
 
 
 def _amount_label(amount: Decimal) -> str:
@@ -87,6 +118,12 @@ def check_draft(draft: ReminderDraft, due: DueReminder) -> list[str]:
     for invoice in due.invoices:
         if not _invoice_pattern(invoice.number).search(text):
             problems.append(f"Numéro de facture absent : {invoice.number}")
+    segments = _segments(text, due)
+    for invoice in due.invoices:
+        if segments[invoice.number] and not any(
+                invoice.amount in amounts_in(segment) and any(_matches(f, invoice) for f in dates_in(segment))
+                for segment in segments[invoice.number]):
+            problems.append(f"Montant ou échéance non rattaché à la facture {invoice.number}")
     # Les numéros de facture peuvent contenir des chiffres et des « / » : on les retire avant d'analyser.
     cleaned = text
     for invoice in due.invoices:
@@ -100,6 +137,8 @@ def check_draft(draft: ReminderDraft, due: DueReminder) -> list[str]:
         expected_amounts.add(LEGAL_AMOUNT)
     problems += [f"Montant absent : {_amount_label(a)}" for a in sorted(expected_amounts - found_amounts)]
     problems += [f"Montant non prévu : {_amount_label(a)}" for a in sorted(found_amounts - expected_amounts)]
+
+    problems += [f"Pourcentage non prévu : {m[0].strip()}" for m in _PERCENT.finditer(cleaned)]
 
     found_dates = dates_in(cleaned)
     for invoice in due.invoices:
