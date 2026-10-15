@@ -24,8 +24,8 @@ Ton demandé :
 
 
 def _safe(text: str) -> str:
-    """Les textes saisis par l'utilisateur ne peuvent pas ouvrir ou fermer le bloc de faits."""
-    return text.replace("<", "‹").replace(">", "›")
+    """Les textes saisis par l'utilisateur ne peuvent ni ouvrir ou fermer le bloc de faits, ni forger une ligne de faits."""
+    return " ".join(text.replace("<", "‹").replace(">", "›").split())
 
 
 def facts_block(due: DueReminder, company: str) -> str:
@@ -38,11 +38,11 @@ def facts_block(due: DueReminder, company: str) -> str:
         f"Type de client : {'professionnel' if client.professional else 'particulier'}",
         f"Notes sur le client : {_safe(client.notes) or 'aucune'}",
         f"Palier : {int(due.stage)} — {STAGE_LABELS[due.stage]}",
-        f"Relances déjà faites pour ces factures : {int(due.stage) - 1}",
         f"Ton demandé : {due.tone.value}",
         "Factures :",
     ]
-    lines += [f"- n° {i.number} : {euros(i.amount)} TTC, échéance {date_fr(i.due_date)}, {i.days_late} jours de retard"
+    lines += [f"- n° {_safe(i.number)} : {euros(i.amount)} TTC, échéance {date_fr(i.due_date)}, {i.days_late} jours de "
+              f"retard, relances déjà faites : {due.invoice_stages.get(i.invoice_id, int(due.stage)) - 1}"
               for i in due.invoices]
     if len(due.invoices) > 1:
         lines.append(f"Total dû : {euros(due.total)} TTC")
