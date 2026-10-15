@@ -81,3 +81,35 @@ def test_crash_midway_keeps_partial_results(monkeypatch, tmp_path):
     assert len(reports) == 1
     text = reports[0].read_text()
     assert "partiel : 2/30" in text and "2 scénarios" in text
+
+
+def test_crash_inside_a_scenario_keeps_the_reminders_already_prepared(monkeypatch, tmp_path):
+    import json
+
+    from agent_relances import prepare as prepare_module
+    from agent_relances.models import Usage
+
+    original = prepare_module.prepare_draft
+    calls = []
+
+    def flaky(api, due, company, model):
+        calls.append(1)
+        if len(calls) == 2:
+            raise RuntimeError("plantage simulé")
+        prepared = original(None, due, company, model)
+        prepared.usage = Usage(cost_usd=0.5)
+        return prepared
+
+    dataset = tmp_path / "scenarios.json"
+    dataset.write_text(json.dumps([s for s in build_scenarios() if s["title"] == "Deux clients"]))
+    monkeypatch.setenv("ANTHROPIC_API_KEY", "fausse-cle")
+    monkeypatch.setattr(run, "load_dotenv", lambda: None)
+    monkeypatch.setattr(run.anthropic, "Anthropic", lambda: None)
+    monkeypatch.setattr(prepare_module, "prepare_draft", flaky)
+    monkeypatch.setattr("sys.argv", ["run", "--no-judge", "--dataset", str(dataset), "--out", str(tmp_path / "out")])
+    with pytest.raises(RuntimeError):
+        run.main()
+    (data_file,) = (tmp_path / "out").glob("*__partiel.json")
+    assert len(json.loads(data_file.read_text())) == 1
+    (report,) = (tmp_path / "out").glob("*__partiel.md")
+    assert "0.5000 $" in report.read_text() or "0,5000 $" in report.read_text()

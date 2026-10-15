@@ -98,11 +98,9 @@ def evaluate(scenarios: list[dict], api, model: str, company: str, judge_api=Non
     totals.setdefault("cost", 0.0)
     for scenario in scenarios:
         source, store, today = build(scenario)
-        result = prepare.prepare_today(source, store, api, company, today, model=model)
-        differences = compare(scenario, result)
-        scenario_outcomes.append(ScenarioOutcome(scenario["id"], not differences, differences))
         expected_tones = {r["client"]: r["tone"] for r in scenario["expected"]["reminders"]}
-        for prepared in result.prepared:
+
+        def record(prepared, scenario_id=scenario["id"], expected_tones=expected_tones) -> None:
             totals["cost"] += prepared.usage.cost_usd
             judge = None
             if judge_api is not None:
@@ -116,12 +114,16 @@ def evaluate(scenarios: list[dict], api, model: str, company: str, judge_api=Non
                 except anthropic.APIError as exc:
                     on_line(f"  Juge indisponible pour {prepared.due.client.name} : {type(exc).__name__}")
             reminder_outcomes.append(ReminderOutcome(
-                scenario=scenario["id"], client=prepared.due.client.name,
+                scenario=scenario_id, client=prepared.due.client.name,
                 expected_tone=expected_tones.get(prepared.due.client.name, prepared.due.tone.value),
                 source=prepared.source.value, first_try_ok=prepared.first_try_ok,
                 facts_ok=not check_draft(prepared.draft, prepared.due), judge=judge,
                 cost_usd=prepared.usage.cost_usd, seconds=prepared.seconds,
             ))
+
+        result = prepare.prepare_today(source, store, api, company, today, model=model, on_progress=record)
+        differences = compare(scenario, result)
+        scenario_outcomes.append(ScenarioOutcome(scenario["id"], not differences, differences))
         on_line(f"{scenario['id']} {'OK ' if not differences else 'ÉCART'} {len(result.prepared)} relance(s)"
                 f" — cumul {totals['cost']:.4f} $")
         if max_cost is not None and totals["cost"] >= max_cost:
