@@ -4,11 +4,13 @@ version = "0.1.0"
 description = "Agent IA de relance des clients impayés pour PME"
 requires-python = ">=3.12"
 dependencies = [
+    "agent-emails",
     "agent-factures",
     "anthropic>=1.9.0",
     "pandas>=3.0.6",
     "pydantic>=2",
     "python-dotenv>=1.2.3",
+    "reportlab>=5.0.1",
     "streamlit>=1.64.0",
 ]
 
@@ -27,6 +29,7 @@ testpaths = ["tests"]
 pythonpath = ["."]
 
 [tool.uv.sources]
+agent-emails = { git = "https://github.com/micouaidan55/agent-emails" }
 agent-factures = { git = "https://github.com/micouaidan55/agent-factures" }
 
 [dependency-groups]

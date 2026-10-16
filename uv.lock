@@ -11,6 +11,20 @@ resolution-markers = [
 ]
 
 [[package]]
+name = "agent-emails"
+version = "0.1.0"
+source = { git = "https://github.com/micouaidan55/agent-emails#f3b0a60a0dad45a89df26523b1e4a2086b3a3ad5" }
+dependencies = [
+    { name = "agent-factures" },
+    { name = "anthropic" },
+    { name = "pandas" },
+    { name = "pydantic" },
+    { name = "python-dotenv" },
+    { name = "reportlab" },
+    { name = "streamlit" },
+]
+
+[[package]]
 name = "agent-factures"
 version = "0.1.0"
 source = { git = "https://github.com/micouaidan55/agent-factures#181eaebebd261d92b7e3a68abce1299d6bc8332c" }
@@ -30,11 +44,13 @@ name = "agent-relances"
 version = "0.1.0"
 source = { editable = "." }
 dependencies = [
+    { name = "agent-emails" },
     { name = "agent-factures" },
     { name = "anthropic" },
     { name = "pandas" },
     { name = "pydantic" },
     { name = "python-dotenv" },
+    { name = "reportlab" },
     { name = "streamlit" },
 ]
 
@@ -46,11 +62,13 @@ dev = [
 
 [package.metadata]
 requires-dist = [
+    { name = "agent-emails", git = "https://github.com/micouaidan55/agent-emails" },
     { name = "agent-factures", git = "https://github.com/micouaidan55/agent-factures" },
     { name = "anthropic", specifier = ">=1.9.0" },
     { name = "pandas", specifier = ">=3.0.6" },
     { name = "pydantic", specifier = ">=2" },
     { name = "python-dotenv", specifier = ">=1.2.3" },
+    { name = "reportlab", specifier = ">=5.0.1" },
     { name = "streamlit", specifier = ">=1.64.0" },
 ]
 
