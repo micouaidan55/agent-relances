@@ -1,5 +1,7 @@
 # Agent relances
 
+> Projet 3 d'une suite d'agents pour PME : [agent-factures](https://github.com/micouaidan55/agent-factures) (projet 1) vérifie les factures, [agent-emails](https://github.com/micouaidan55/agent-emails) (projet 2) trie la boîte de réception, agent-relances relance les impayés. Vue d'ensemble de la suite : [agent-pme-suite](https://github.com/micouaidan55/agent-pme-suite).
+
 **Un agent IA qui relance les clients impayés d'une PME au bon moment, sur le bon ton, sans jamais se tromper de montant, sous votre contrôle.**
 
 Dans une PME, relancer les impayés est une corvée qu'on repousse : on oublie une facture, on relance trop tard, on écrit le même mail sec au meilleur client et au retardataire chronique. Cet agent prépare chaque matin les relances dues, adaptées au client et à l'historique, et un humain les valide en quelques secondes. Rien n'est jamais envoyé automatiquement.
