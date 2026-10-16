@@ -134,3 +134,69 @@ class PreparedReminder(BaseModel):
     problems: list[str] = Field(default_factory=list)
     usage: Usage = Field(default_factory=Usage)
     seconds: float = 0.0
+
+
+class ReplyIntent(StrEnum):
+    PAYMENT_ANNOUNCED = "paiement_annonce"
+    PROMISED_DATE = "promesse_date"
+    PLAN_REQUEST = "demande_echeancier"
+    PLAN_AGREEMENT = "accord_echeancier"
+    DISPUTE = "contestation"
+    OTHER = "autre"
+
+
+class ReplyReading(BaseModel):
+    """Sortie structurée du modèle de compréhension d'une réponse de client."""
+
+    intent: ReplyIntent
+    promised_date: str | None = None  # AAAA-MM-JJ
+    requested_installments: int | None = None
+    invoice_numbers: list[str] = Field(default_factory=list)
+    summary: str
+
+
+class ReplyStatus(StrEnum):
+    TO_REVIEW = "a_traiter"
+    APPLIED = "appliquee"
+    DISMISSED = "classee"
+    UNMATCHED = "non_rattachee"
+
+
+class ActionKind(StrEnum):
+    POSTPONE = "report"
+    SUSPEND = "suspension"
+    PROPOSE_PLAN = "proposition_echeancier"
+    ACTIVATE_PLAN = "activation_echeancier"
+    HUMAN = "humain"
+    NONE = "sans_objet"
+
+
+class PlanStatus(StrEnum):
+    PROPOSED = "propose"
+    ACTIVE = "en_cours"
+    SETTLED = "solde"
+    BROKEN = "rompu"
+    CANCELLED = "annule"
+
+
+class Installment(BaseModel):
+    number: int
+    amount: Decimal
+    due_date: date | None = None
+    received_on: date | None = None
+
+
+class Plan(BaseModel):
+    id: int
+    client_key: str
+    invoice_ids: list[int]
+    total: Decimal
+    status: PlanStatus
+    proposed_on: date
+    agreed_on: date | None = None
+    installments: list[Installment]
+
+    @property
+    def remaining(self) -> Decimal:
+        received = sum((i.amount for i in self.installments if i.received_on is not None), Decimal("0"))
+        return self.total - received

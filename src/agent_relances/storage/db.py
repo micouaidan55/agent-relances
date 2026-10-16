@@ -54,6 +54,75 @@ CREATE TABLE IF NOT EXISTS action_log (
     detail TEXT NOT NULL,
     created_at TEXT NOT NULL DEFAULT (datetime('now'))
 );
+CREATE TABLE IF NOT EXISTS replies (
+    id INTEGER PRIMARY KEY AUTOINCREMENT,
+    message_id TEXT NOT NULL UNIQUE,
+    client_key TEXT,
+    reminder_ref TEXT,
+    match_method TEXT NOT NULL DEFAULT '',
+    sender TEXT NOT NULL DEFAULT '',
+    subject TEXT NOT NULL DEFAULT '',
+    received_at TEXT NOT NULL DEFAULT '',
+    body TEXT NOT NULL DEFAULT '',
+    intent TEXT NOT NULL,
+    promised_date TEXT,
+    requested_installments INTEGER,
+    summary TEXT NOT NULL DEFAULT '',
+    suspicious INTEGER NOT NULL DEFAULT 0,
+    proposed_action TEXT NOT NULL,
+    action_until TEXT,
+    status TEXT NOT NULL,
+    cost_usd REAL NOT NULL DEFAULT 0,
+    created_on TEXT NOT NULL
+);
+CREATE TABLE IF NOT EXISTS holds (
+    id INTEGER PRIMARY KEY AUTOINCREMENT,
+    client_key TEXT NOT NULL,
+    kind TEXT NOT NULL CHECK (kind IN ('report', 'suspension')),
+    until TEXT,
+    reason TEXT NOT NULL DEFAULT '',
+    created_on TEXT NOT NULL,
+    released_on TEXT
+);
+CREATE TABLE IF NOT EXISTS plans (
+    id INTEGER PRIMARY KEY AUTOINCREMENT,
+    client_key TEXT NOT NULL,
+    total TEXT NOT NULL,
+    status TEXT NOT NULL,
+    proposed_on TEXT NOT NULL,
+    agreed_on TEXT,
+    closed_on TEXT
+);
+CREATE UNIQUE INDEX IF NOT EXISTS one_open_plan_per_client ON plans (client_key)
+    WHERE status IN ('propose', 'en_cours');
+CREATE TABLE IF NOT EXISTS plan_invoices (
+    plan_id INTEGER NOT NULL,
+    invoice_id INTEGER NOT NULL,
+    PRIMARY KEY (plan_id, invoice_id)
+);
+CREATE TABLE IF NOT EXISTS installments (
+    plan_id INTEGER NOT NULL,
+    number INTEGER NOT NULL,
+    amount TEXT NOT NULL,
+    due_date TEXT,
+    received_on TEXT,
+    PRIMARY KEY (plan_id, number)
+);
+CREATE TABLE IF NOT EXISTS installment_reminders (
+    plan_id INTEGER NOT NULL,
+    number INTEGER NOT NULL,
+    stage INTEGER NOT NULL,
+    decided_on TEXT NOT NULL,
+    eml_path TEXT,
+    PRIMARY KEY (plan_id, number, stage)
+);
+CREATE TABLE IF NOT EXISTS disputes (
+    id INTEGER PRIMARY KEY AUTOINCREMENT,
+    client_key TEXT NOT NULL,
+    folder TEXT NOT NULL,
+    created_on TEXT NOT NULL,
+    total_due TEXT NOT NULL
+);
 """
 
 
