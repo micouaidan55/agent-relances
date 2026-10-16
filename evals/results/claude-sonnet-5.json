@@ -1,0 +1,427 @@
+[
+  {
+    "scenario": "S01",
+    "client": "Hôtel des Canuts",
+    "expected_tone": "leger",
+    "source": "modele",
+    "first_try_ok": true,
+    "facts_ok": true,
+    "judge": {
+      "ton": "leger",
+      "clarte": 5,
+      "politesse": 5,
+      "appel_action": 4,
+      "commentaire": "Le message est clair, courtois et suppose un simple oubli, tout en demandant une date de règlement précise."
+    },
+    "cost_usd": 0.005022,
+    "seconds": 4.637381875189021
+  },
+  {
+    "scenario": "S02",
+    "client": "Bistrot Saint-Paul",
+    "expected_tone": "leger",
+    "source": "modele",
+    "first_try_ok": true,
+    "facts_ok": true,
+    "judge": {
+      "ton": "leger",
+      "clarte": 5,
+      "politesse": 5,
+      "appel_action": 4,
+      "commentaire": "La relance est claire et courtoise, suppose un simple oubli, et demande poliment une date de règlement sans insister."
+    },
+    "cost_usd": 0.004508,
+    "seconds": 3.323723416076973
+  },
+  {
+    "scenario": "S03",
+    "client": "Galerie Nova",
+    "expected_tone": "neutre",
+    "source": "modele",
+    "first_try_ok": true,
+    "facts_ok": true,
+    "judge": {
+      "ton": "neutre",
+      "clarte": 5,
+      "politesse": 5,
+      "appel_action": 4,
+      "commentaire": "La relance est claire et courtoise, mais pourrait préciser un délai de réponse pour renforcer l'appel à l'action."
+    },
+    "cost_usd": 0.004494,
+    "seconds": 3.685807208996266
+  },
+  {
+    "scenario": "S04",
+    "client": "Cabinet Benali",
+    "expected_tone": "neutre",
+    "source": "modele",
+    "first_try_ok": true,
+    "facts_ok": true,
+    "judge": {
+      "ton": "neutre",
+      "clarte": 5,
+      "politesse": 5,
+      "appel_action": 4,
+      "commentaire": "Le message est clair, courtois et professionnel, rappelant précisément la facture et demandant une date de règlement sans toutefois fixer d'échéance ferme."
+    },
+    "cost_usd": 0.005824,
+    "seconds": 4.672159417066723
+  },
+  {
+    "scenario": "S05",
+    "client": "Maison Garnier",
+    "expected_tone": "neutre",
+    "source": "modele",
+    "first_try_ok": true,
+    "facts_ok": true,
+    "judge": {
+      "ton": "neutre",
+      "clarte": 5,
+      "politesse": 5,
+      "appel_action": 4,
+      "commentaire": "Le message est clair et courtois, mentionne une relance précédente ce qui le rapproche du ferme, mais reste globalement professionnel et direct sans insister sur des conséquences."
+    },
+    "cost_usd": 0.004798,
+    "seconds": 3.9421302499249578
+  },
+  {
+    "scenario": "S06",
+    "client": "Café des Arts",
+    "expected_tone": "ferme",
+    "source": "modele",
+    "first_try_ok": true,
+    "facts_ok": true,
+    "judge": {
+      "ton": "ferme",
+      "clarte": 5,
+      "politesse": 4,
+      "appel_action": 5,
+      "commentaire": "La relance est claire et précise sur la facture et le montant, ferme sur le retard tout en restant courtoise, et demande explicitement une date de paiement."
+    },
+    "cost_usd": 0.00506,
+    "seconds": 3.6939495000988245
+  },
+  {
+    "scenario": "S07",
+    "client": "Studio Cohen",
+    "expected_tone": "ferme",
+    "source": "modele",
+    "first_try_ok": true,
+    "facts_ok": true,
+    "judge": {
+      "ton": "ferme",
+      "clarte": 5,
+      "politesse": 4,
+      "appel_action": 4,
+      "commentaire": "La lettre est claire et ferme, mentionne précisément facture, montant et retard, mais ne fixe pas de date limite exacte pour le règlement."
+    },
+    "cost_usd": 0.008598,
+    "seconds": 7.663673082832247
+  },
+  {
+    "scenario": "S08",
+    "client": "Boulangerie Faure",
+    "expected_tone": "ferme",
+    "source": "modele",
+    "first_try_ok": true,
+    "facts_ok": true,
+    "judge": {
+      "ton": "ferme",
+      "clarte": 5,
+      "politesse": 4,
+      "appel_action": 5,
+      "commentaire": "La relance est claire et ferme, rappelant le montant, le retard et les conséquences juridiques tout en restant courtoise."
+    },
+    "cost_usd": 0.005836,
+    "seconds": 4.4986503748223186
+  },
+  {
+    "scenario": "S09",
+    "client": "Restaurant Le Gourmet",
+    "expected_tone": "ferme",
+    "source": "modele",
+    "first_try_ok": true,
+    "facts_ok": true,
+    "judge": {
+      "ton": "ferme",
+      "clarte": 5,
+      "politesse": 4,
+      "appel_action": 4,
+      "commentaire": "Le message est clair et ferme, rappelant le retard, les relances précédentes et les conséquences, tout en restant courtois."
+    },
+    "cost_usd": 0.006034,
+    "seconds": 5.44563674996607
+  },
+  {
+    "scenario": "S10",
+    "client": "Hôtel Bellevue",
+    "expected_tone": "ferme",
+    "source": "modele",
+    "first_try_ok": true,
+    "facts_ok": true,
+    "judge": {
+      "ton": "ferme",
+      "clarte": 5,
+      "politesse": 4,
+      "appel_action": 5,
+      "commentaire": "La relance est claire, précise et ferme, mentionnant le montant, l'échéance, le retard et les conséquences possibles, tout en restant courtoise."
+    },
+    "cost_usd": 0.005144,
+    "seconds": 4.039154999889433
+  },
+  {
+    "scenario": "S11",
+    "client": "Librairie du Parc",
+    "expected_tone": "ferme",
+    "source": "modele",
+    "first_try_ok": true,
+    "facts_ok": true,
+    "judge": {
+      "ton": "ferme",
+      "clarte": 5,
+      "politesse": 4,
+      "appel_action": 5,
+      "commentaire": "La relance est claire et ferme, rappelant le montant, le retard et les conséquences, tout en restant courtoise et en demandant explicitement une date de paiement."
+    },
+    "cost_usd": 0.004816,
+    "seconds": 3.7175726669374853
+  },
+  {
+    "scenario": "S12",
+    "client": "Pharmacie Centrale",
+    "expected_tone": "ferme",
+    "source": "modele",
+    "first_try_ok": true,
+    "facts_ok": true,
+    "judge": {
+      "ton": "ferme",
+      "clarte": 5,
+      "politesse": 4,
+      "appel_action": 5,
+      "commentaire": "Le message est clair, précis sur les montants et délais, ferme sur les conséquences tout en restant courtois."
+    },
+    "cost_usd": 0.004864,
+    "seconds": 4.088265375001356
+  },
+  {
+    "scenario": "S13",
+    "client": "Atelier Morel",
+    "expected_tone": "ferme",
+    "source": "modele",
+    "first_try_ok": true,
+    "facts_ok": true,
+    "judge": {
+      "ton": "ferme",
+      "clarte": 5,
+      "politesse": 4,
+      "appel_action": 5,
+      "commentaire": "La relance est claire sur les montants et échéances, ferme sur le retard et les relances précédentes, tout en restant courtoise et en demandant une date précise de paiement."
+    },
+    "cost_usd": 0.005538,
+    "seconds": 4.094875584123656
+  },
+  {
+    "scenario": "S14",
+    "client": "Fleurs de Lyon",
+    "expected_tone": "neutre",
+    "source": "modele",
+    "first_try_ok": true,
+    "facts_ok": true,
+    "judge": {
+      "ton": "neutre",
+      "clarte": 5,
+      "politesse": 5,
+      "appel_action": 4,
+      "commentaire": "Le message est clair et courtois, rappelant précisément les factures et montants dus tout en demandant une date de paiement, sans insister sur un éventuel retard prolongé."
+    },
+    "cost_usd": 0.00552,
+    "seconds": 4.0371975840535015
+  },
+  {
+    "scenario": "S15",
+    "client": "Clinique Vétérinaire du Rhône",
+    "expected_tone": "neutre",
+    "source": "modele",
+    "first_try_ok": true,
+    "facts_ok": true,
+    "judge": {
+      "ton": "neutre",
+      "clarte": 5,
+      "politesse": 5,
+      "appel_action": 4,
+      "commentaire": "La relance liste clairement les factures et montants dus et demande une date de paiement, sur un ton professionnel et courtois sans insister sur des conséquences."
+    },
+    "cost_usd": 0.00564,
+    "seconds": 3.652136333985254
+  },
+  {
+    "scenario": "S17",
+    "client": "Cave des Pentes",
+    "expected_tone": "neutre",
+    "source": "modele",
+    "first_try_ok": true,
+    "facts_ok": true,
+    "judge": {
+      "ton": "neutre",
+      "clarte": 5,
+      "politesse": 5,
+      "appel_action": 4,
+      "commentaire": "Le message est clair et courtois, rappelant la facture, le montant et une relance précédente, tout en demandant une date de paiement précise."
+    },
+    "cost_usd": 0.004936,
+    "seconds": 4.29495762498118
+  },
+  {
+    "scenario": "S22",
+    "client": "Crèche Les Petits Pas",
+    "expected_tone": "leger",
+    "source": "modele",
+    "first_try_ok": true,
+    "facts_ok": true,
+    "judge": {
+      "ton": "leger",
+      "clarte": 5,
+      "politesse": 5,
+      "appel_action": 4,
+      "commentaire": "La relance est cordiale et claire, mentionne précisément la facture et le montant, et demande une date de règlement sans insister lourdement."
+    },
+    "cost_usd": 0.004544,
+    "seconds": 3.309999499935657
+  },
+  {
+    "scenario": "S22",
+    "client": "Hôtel du Lac",
+    "expected_tone": "leger",
+    "source": "modele",
+    "first_try_ok": true,
+    "facts_ok": true,
+    "judge": {
+      "ton": "leger",
+      "clarte": 5,
+      "politesse": 5,
+      "appel_action": 4,
+      "commentaire": "La relance est claire et courtoise, suppose un simple oubli et demande poliment une date de règlement sans insister lourdement."
+    },
+    "cost_usd": 0.004972,
+    "seconds": 3.9499803751241416
+  },
+  {
+    "scenario": "S24",
+    "client": "Opticien Lambert",
+    "expected_tone": "leger",
+    "source": "modele",
+    "first_try_ok": true,
+    "facts_ok": true,
+    "judge": {
+      "ton": "leger",
+      "clarte": 5,
+      "politesse": 5,
+      "appel_action": 4,
+      "commentaire": "Le message est clair, courtois et suppose un simple oubli tout en demandant une date de règlement précise."
+    },
+    "cost_usd": 0.004582,
+    "seconds": 3.2173910411074758
+  },
+  {
+    "scenario": "S25",
+    "client": "Camille Fontaine",
+    "expected_tone": "neutre",
+    "source": "modele",
+    "first_try_ok": true,
+    "facts_ok": true,
+    "judge": {
+      "ton": "neutre",
+      "clarte": 5,
+      "politesse": 5,
+      "appel_action": 4,
+      "commentaire": "La relance est claire et courtoise, mentionne la précédente relance pour signaler un début de fermeté, mais pourrait préciser une date limite exacte pour renforcer l'appel à l'action."
+    },
+    "cost_usd": 0.007424,
+    "seconds": 6.437177167041227
+  },
+  {
+    "scenario": "S26",
+    "client": "Thomas Durand",
+    "expected_tone": "ferme",
+    "source": "modele",
+    "first_try_ok": true,
+    "facts_ok": true,
+    "judge": {
+      "ton": "ferme",
+      "clarte": 5,
+      "politesse": 4,
+      "appel_action": 4,
+      "commentaire": "Le message est clair et ferme, mentionne le montant, le retard et les conséquences, tout en restant courtois et en demandant une date de règlement."
+    },
+    "cost_usd": 0.006722,
+    "seconds": 5.6507218750193715
+  },
+  {
+    "scenario": "S27",
+    "client": "Sophie Leroy",
+    "expected_tone": "ferme",
+    "source": "modele",
+    "first_try_ok": true,
+    "facts_ok": true,
+    "judge": {
+      "ton": "ferme",
+      "clarte": 5,
+      "politesse": 4,
+      "appel_action": 5,
+      "commentaire": "La relance est très claire sur les montants et échéances, ferme dans le ton tout en restant courtoise, et demande explicitement une date de règlement sous peine de mise en demeure."
+    },
+    "cost_usd": 0.00696,
+    "seconds": 5.038124333135784
+  },
+  {
+    "scenario": "S28",
+    "client": "Nadia Benali",
+    "expected_tone": "neutre",
+    "source": "modele",
+    "first_try_ok": true,
+    "facts_ok": true,
+    "judge": {
+      "ton": "neutre",
+      "clarte": 5,
+      "politesse": 5,
+      "appel_action": 4,
+      "commentaire": "La relance est claire, courtoise et professionnelle, demandant explicitement une date de paiement sans être agressive."
+    },
+    "cost_usd": 0.007566,
+    "seconds": 6.488606209168211
+  },
+  {
+    "scenario": "S29",
+    "client": "Julien Roche",
+    "expected_tone": "leger",
+    "source": "modele",
+    "first_try_ok": true,
+    "facts_ok": true,
+    "judge": {
+      "ton": "leger",
+      "clarte": 5,
+      "politesse": 5,
+      "appel_action": 4,
+      "commentaire": "La relance est claire et courtoise, suppose un simple oubli et demande poliment une date de règlement sans insister davantage."
+    },
+    "cost_usd": 0.004346,
+    "seconds": 2.8342532499227673
+  },
+  {
+    "scenario": "S30",
+    "client": "Le Comptoir Gourmand",
+    "expected_tone": "ferme",
+    "source": "modele",
+    "first_try_ok": true,
+    "facts_ok": true,
+    "judge": {
+      "ton": "ferme",
+      "clarte": 5,
+      "politesse": 5,
+      "appel_action": 4,
+      "commentaire": "La relance est claire et courtoise tout en insistant fermement sur le retard et la nécessité d'une date de paiement précise."
+    },
+    "cost_usd": 0.004952,
+    "seconds": 3.8543507501017302
+  }
+]

@@ -20,7 +20,37 @@ C'est le troisième projet d'une suite d'agents pour PME : [agent-factures](http
 
 On mesure : l'exactitude des règles, les faits exacts selon le vérificateur (dès le premier essai et après vérification), le **ton reconnu à l'aveugle** par un juge qui ne connaît ni le palier ni le profil, la note du juge (l'adéquation du ton est mesurée par le ton deviné à l'aveugle), le recours au modèle de secours et le coût par relance.
 
-Les résultats chiffrés seront publiés ici après le premier run d'évaluation. Pour reproduire (payant, plafonné) : `uv run python -m evals.run --max-cost 1`.
+### Résultats mesurés
+
+Configuration retenue : Claude Sonnet 5 rédige, le code décide et vérifie.
+
+| Métrique | Résultat | Objectif |
+|---|---|---|
+| Règles (relance, palier, regroupement, mention légale) | 100 % (30/30 scénarios) | 100 % |
+| Faits exacts selon le vérificateur | 100 % | 100 % |
+| Faits exacts dès le premier essai | 100 % | — |
+| Recours au modèle de secours | 0 % | ≤ 5 % |
+| Ton reconnu à l'aveugle | 100 % (25/25 relances) | ≥ 85 % |
+| Note moyenne du juge | 4,63 / 5 | ≥ 4 |
+| Coût moyen par relance | 0,0055 $ | ≤ 0,02 $ |
+| Temps moyen par relance | 4,4 s | — |
+
+Le juge lit chaque relance sans connaître ni le palier ni le profil du client : il retrouve le ton voulu dans les 25 cas. La personnalisation n'est donc pas décorative, elle se perçoit à la lecture.
+
+### Expérience : Sonnet ou Haiku pour rédiger ?
+
+| | Sonnet 5 | Haiku 4.5 |
+|---|---|---|
+| Règles | 100 % | 100 % |
+| Faits exacts (après vérification) | 100 % | 100 % |
+| Faits exacts dès le premier essai | 100 % | 96 % |
+| Ton reconnu à l'aveugle | 100 % | 84 % |
+| Note du juge | 4,63 / 5 | 4,53 / 5 |
+| Coût moyen par relance | 0,0055 $ | 0,0020 $ |
+
+Haiku coûte presque trois fois moins cher et, grâce à la vérification par le code, ne laisse passer aucun fait faux. Mais il manque l'objectif de ton (84 % contre 85 % visés) : il écrit trop ferme dans 4 relances qui devaient rester neutres ou légères, ce qui est précisément l'erreur à éviter avec un bon client. À moins d'un centime la relance, Sonnet reste le choix par défaut ; le modèle se change d'un paramètre.
+
+Détail par relance : `evals/results/`. Pour reproduire (payant, plafonné, environ 0,20 $ par run) : `uv run python -m evals.run --max-cost 1` ; variante : `--model claude-haiku-4-5`.
 
 ## Démarrage rapide
 
@@ -32,7 +62,7 @@ uv run python -m demo.seed  # base de démonstration ; TODAY=2026-10-15 est déj
 uv run streamlit run app/main.py
 ```
 
-La démonstration montre les trois paliers, un regroupement, un particulier, une fiche manquante, un passage à un humain et une facture encaissée après relance. Avec une clé d'API, préparer les relances du jour coûte de l'ordre du centime par relance (à confirmer par l'évaluation).
+La démonstration montre les trois paliers, un regroupement, un particulier, une fiche manquante, un passage à un humain et une facture encaissée après relance. Avec une clé d'API, préparer les relances du jour coûte environ un demi-centime par relance (mesuré : 0,0055 $ avec Sonnet).
 
 Pour relancer les vraies factures d'agent-factures, pointez `AGENT_FACTURES_DB` vers sa base (par exemple `../agent-factures/data/factures.db`) et videz `TODAY`.
 
