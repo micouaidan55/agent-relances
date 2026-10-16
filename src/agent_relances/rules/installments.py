@@ -1,0 +1,65 @@
+"""Règle d'échéancier : calculée et vérifiée uniquement par le code, jamais par le modèle."""
+
+import calendar
+from datetime import date, timedelta
+from decimal import ROUND_DOWN, Decimal
+
+MAX_INSTALLMENTS = 4
+MIN_INSTALLMENT = Decimal("100")
+SMALL_TOTAL = Decimal("200")
+FIRST_DUE_DAYS = 30
+
+_CENT = Decimal("0.01")
+
+
+class PlanRuleError(ValueError):
+    """Demande d'échéancier impossible à satisfaire dans la règle de l'entreprise."""
+
+
+def max_installments(total: Decimal) -> int:
+    if total < SMALL_TOTAL:
+        return 2
+    return min(MAX_INSTALLMENTS, int(total // MIN_INSTALLMENT))
+
+
+def plan_amounts(total: Decimal, requested: int | None) -> list[Decimal]:
+    if total != total.quantize(_CENT):
+        raise PlanRuleError("Le total doit être exprimé en centimes entiers.")
+    if total < 2 * _CENT:
+        raise PlanRuleError("Le total est trop faible pour être réparti en au moins 2 versements.")
+    if requested == 1:
+        raise PlanRuleError("Un paiement en une seule fois n'est pas un échéancier.")
+    maximum = max_installments(total)
+    count = requested if requested is not None and 2 <= requested <= maximum else maximum
+    base = (total / count).quantize(_CENT, rounding=ROUND_DOWN)
+    amounts = [base] * (count - 1)
+    amounts.append(total - base * (count - 1))
+    return amounts
+
+
+def plan_violations(amounts: list[Decimal], total: Decimal) -> list[str]:
+    problems: list[str] = []
+    if len(amounts) < 2:
+        problems.append("Un échéancier compte au moins 2 versements.")
+    if len(amounts) > max_installments(total):
+        problems.append(f"Trop de versements : {len(amounts)} pour un maximum de {max_installments(total)}.")
+    if any(a != a.quantize(_CENT) for a in amounts):
+        problems.append("Les montants doivent être en centimes entiers.")
+    if any(a < _CENT for a in amounts):
+        problems.append("Chaque versement doit être strictement positif.")
+    if sum(amounts, Decimal("0")) != total:
+        problems.append("La somme des versements ne correspond pas au total dû.")
+    if total >= SMALL_TOTAL and any(a < MIN_INSTALLMENT for a in amounts):
+        problems.append("Chaque versement doit être d'au moins 100 €.")
+    return problems
+
+
+def installment_dates(agreed_on: date, count: int) -> list[date]:
+    first = agreed_on + timedelta(days=FIRST_DUE_DAYS)
+    dates = [first]
+    for k in range(1, count):
+        month_index = first.month - 1 + k
+        year, month = first.year + month_index // 12, month_index % 12 + 1
+        day = min(first.day, calendar.monthrange(year, month)[1])
+        dates.append(date(year, month, day))
+    return dates
