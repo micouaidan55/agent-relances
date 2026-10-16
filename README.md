@@ -4,6 +4,10 @@
 
 Dans une PME, relancer les impayés est une corvée qu'on repousse : on oublie une facture, on relance trop tard, on écrit le même mail sec au meilleur client et au retardataire chronique. Cet agent prépare chaque matin les relances dues, adaptées au client et à l'historique, et un humain les valide en quelques secondes. Rien n'est jamais envoyé automatiquement.
 
+![Démo : relances du jour, tons adaptés, remise ajoutée à la main refusée, dépôt, historique et tableau de bord](docs/demo.gif)
+
+*En 30 secondes : les relances du jour, rédigées par Claude sur le ton voulu (ferme avec la mention des 40 € pour un professionnel au dernier palier, léger pour un bon payeur). Une remise ajoutée à la main est refusée par le code. La relance validée est déposée, jamais envoyée. Puis l'historique par client et le tableau de bord.*
+
 C'est le troisième projet d'une suite d'agents pour PME : [agent-factures](https://github.com/micouaidan55/agent-factures) lit et vérifie les factures, [agent-emails](https://github.com/micouaidan55/agent-emails) trie la boîte de réception, et agent-relances suit l'argent jusqu'à l'encaissement.
 
 ## Ce que fait l'agent
