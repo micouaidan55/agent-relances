@@ -178,3 +178,39 @@ def test_connect_migrates_existing_v1_database_without_loss(tmp_path):
     store = RecoveryStore(conn)
     assert store.create_plan("hotel-canuts", [1], Decimal("500"), [Decimal("250")] * 2, TODAY) == 1
     connect(path)  # idempotent
+
+
+def test_add_reply_normalizes_client_key_and_reports_real_integrity_errors(store):
+    reply_id = add_reply(store, client_key="Hôtel des Canuts")
+    assert store.get_reply(reply_id)["client_key"] == "hotel des canuts"
+    assert store.get_reply(add_reply(store, "<m2@x>", client_key=None))["client_key"] is None
+    with pytest.raises(sqlite3.IntegrityError):  # NOT NULL, pas pris pour un doublon
+        add_reply(store, "<m3@x>", sender=None)
+    with pytest.raises(ValueError, match="déjà"):
+        add_reply(store, "<m1@x>")
+
+
+def test_installment_reminder_keeps_first_decision(store):
+    plan_id = store.create_plan("hotel-canuts", [1], Decimal("500"), [Decimal("250")] * 2, TODAY)
+    assert store.record_installment_reminder(plan_id, 1, 1, date(2026, 11, 20), "/a.eml") is True
+    assert store.record_installment_reminder(plan_id, 1, 1, date(2026, 12, 25), "/b.eml") is False
+    assert store.installment_reminders(plan_id) == {1: [(1, date(2026, 11, 20))]}
+    row = store._conn.execute("SELECT eml_path FROM installment_reminders").fetchone()
+    assert row["eml_path"] == "/a.eml"
+
+
+def test_unique_index_backstops_second_open_plan(store, monkeypatch):
+    first = store.create_plan("hotel-canuts", [1], Decimal("500"), [Decimal("250")] * 2, TODAY)
+    monkeypatch.setattr(store, "open_plan_for", lambda key: None)  # contourne la vérification applicative
+    with pytest.raises(ValueError, match="déjà"):
+        store.create_plan("hotel-canuts", [2], Decimal("300"), [Decimal("150")] * 2, TODAY)
+    assert [p.id for p in store.list_plans()] == [first]
+    assert store.planned_invoice_ids() == {1}
+
+
+def test_add_hold_rejects_report_without_end_and_unknown_kind(store):
+    with pytest.raises(ValueError, match="fin"):
+        store.add_hold("hotel-canuts", "report", None, "", TODAY)
+    with pytest.raises(ValueError, match="inconnu"):
+        store.add_hold("hotel-canuts", "autre", None, "", TODAY)
+    assert store.active_holds(TODAY) == {}

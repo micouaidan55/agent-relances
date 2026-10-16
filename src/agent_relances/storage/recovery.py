@@ -6,6 +6,7 @@ from decimal import Decimal
 
 from agent_relances.models import (
     ActionKind, Installment, Plan, PlanStatus, ReplyIntent, ReplyStatus, client_key,
+    client_key as client_key_fn,
 )
 from agent_relances.rules.installments import installment_dates, plan_violations
 
@@ -29,17 +30,18 @@ class RecoveryStore:
         action_until: date | None, status: ReplyStatus, cost_usd: float, today: date,
     ) -> int:
         """Enregistre une réponse ; un message déjà connu (même `message_id`) n'est jamais enregistré deux fois."""
+        client_key_n = client_key_fn(client_key) if client_key else None
+        if message_id in self.known_reply_ids():
+            raise ValueError(f"Réponse déjà enregistrée : {message_id}")
         cursor = self._conn.execute(
-            "INSERT OR IGNORE INTO replies (message_id, client_key, reminder_ref, match_method, sender, subject,"
+            "INSERT INTO replies (message_id, client_key, reminder_ref, match_method, sender, subject,"
             " received_at, body, intent, promised_date, requested_installments, summary, suspicious, proposed_action,"
             " action_until, status, cost_usd, created_on) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)",
-            (message_id, client_key, reminder_ref, match_method, sender, subject, received_at, body, intent.value,
+            (message_id, client_key_n, reminder_ref, match_method, sender, subject, received_at, body, intent.value,
              _iso(promised_date), requested_installments, summary, int(suspicious), proposed_action.value,
              _iso(action_until), status.value, cost_usd, today.isoformat()),
         )
         self._conn.commit()
-        if cursor.rowcount != 1:
-            raise ValueError(f"Réponse déjà enregistrée : {message_id}")
         return int(cursor.lastrowid)
 
     def get_reply(self, reply_id: int) -> dict | None:
@@ -230,13 +232,15 @@ class RecoveryStore:
 
     def record_installment_reminder(
         self, plan_id: int, number: int, stage: int, decided_on: date, eml_path: str | None,
-    ) -> None:
-        self._conn.execute(
-            "INSERT OR REPLACE INTO installment_reminders (plan_id, number, stage, decided_on, eml_path)"
+    ) -> bool:
+        """Première décision conservée : un palier déjà enregistré n'est jamais écrasé (retourne False)."""
+        cursor = self._conn.execute(
+            "INSERT OR IGNORE INTO installment_reminders (plan_id, number, stage, decided_on, eml_path)"
             " VALUES (?, ?, ?, ?, ?)",
             (plan_id, number, stage, decided_on.isoformat(), eml_path),
         )
         self._conn.commit()
+        return cursor.rowcount == 1
 
     def installment_reminders(self, plan_id: int) -> dict[int, list[tuple[int, date]]]:
         """Mensualité -> [(palier, date de validation)] dans l'ordre des paliers."""
