@@ -85,3 +85,40 @@ def test_reminders_are_sorted_by_amount_due():
     invoices = [late(5, 1, "AL-1", "Hôtel des Canuts", "100.00"), late(5, 2, "AL-2", "Galerie Nova", "900.00")]
     result = run(invoices, clients=[client(), client(name="Galerie Nova", email="a@nova.fr")])
     assert [r.client.name for r in result.reminders] == ["Galerie Nova", "Hôtel des Canuts"]
+
+
+def run_with(invoices, holds=None, planned=None):
+    return due_reminders(invoices, {c.key: c for c in [client()]}, {}, {}, {}, TODAY,
+                         holds=holds, planned_invoice_ids=planned)
+
+
+def test_client_postponed_until_tomorrow_is_not_reminded():
+    assert run_with([late(20)], holds={"hotel des canuts": TODAY + timedelta(days=1)}).reminders == []
+
+
+def test_client_hold_expires_on_its_end_date():
+    assert len(run_with([late(20)], holds={"hotel des canuts": TODAY}).reminders) == 1
+
+
+def test_expired_hold_is_ignored():
+    assert len(run_with([late(20)], holds={"hotel des canuts": TODAY - timedelta(days=1)}).reminders) == 1
+
+
+def test_indefinite_suspension_skips_the_client_entirely():
+    schedule = run_with([late(60)], holds={"hotel des canuts": None})
+    assert schedule.reminders == [] and schedule.to_humans == [] and schedule.missing_clients == []
+
+
+def test_hold_key_is_normalised_like_the_client_name():
+    assert run_with([late(20, customer="HÔTEL  des Canuts")], holds={"hotel des canuts": None}).reminders == []
+
+
+def test_invoice_under_a_plan_is_skipped_but_a_later_invoice_is_reminded():
+    invoices = [late(20, 1, "AL-1"), late(5, 2, "AL-2")]
+    [reminder] = run_with(invoices, planned={1}).reminders
+    assert [i.number for i in reminder.invoices] == ["AL-2"]
+
+
+def test_planned_invoice_does_not_escalate_to_a_human():
+    schedule = run_with([late(60)], planned={1})
+    assert schedule.reminders == [] and schedule.to_humans == []

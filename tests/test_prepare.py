@@ -1,3 +1,5 @@
+import email
+import email.policy
 from datetime import date, timedelta
 
 import anthropic
@@ -7,6 +9,7 @@ from agent_relances.models import DraftSource, ReminderDraft, ReminderStatus, St
 from agent_relances.prepare import prepare_draft, prepare_today, validate_reminder
 from agent_relances.sources import InvoiceSource
 from agent_relances.storage.db import connect
+from agent_relances.storage.recovery import RecoveryStore
 from agent_relances.storage.repository import ReminderStore
 from tests.factories import client, due_reminder, factures_conn, issued, overdue
 from tests.fakes import FakeClient, reply
@@ -121,4 +124,35 @@ def test_subject_with_a_newline_is_normalised_and_deposits_an_eml(tmp_path):
     content = eml.read_text()
     assert "Subject: Rappel facture AL-2026-101" in content
     assert "X-Unsent: 1" in content and "Date: " in content
-    assert store.get(pending.id).subject == "Rappel facture AL-2026-101"
+    assert store.get(pending.id).subject == "Rappel facture AL-2026-101 [Réf. R-00001]"
+
+
+def test_deposited_subject_carries_the_reference_exactly_once(tmp_path):
+    source, store, _, _ = setup(tmp_path)
+    prepare_today(source, store, FakeClient([reply(GOOD)]), COMPANY, TODAY)
+    [pending] = store.list_reminders({ReminderStatus.TO_VALIDATE})
+    outbox = tmp_path / "deposees"
+    result = validate_reminder(store, source, pending.id, GOOD.subject, GOOD.body, outbox, TODAY)
+    assert result.ok
+    expected = f"Rappel facture AL-2026-101 [Réf. R-{pending.id:05d}]"
+    assert store.get(pending.id).subject == expected
+    [eml] = outbox.glob("*.eml")
+    message = email.message_from_bytes(eml.read_bytes(), policy=email.policy.default)
+    assert message["Subject"] == expected and message["Subject"].count("[Réf.") == 1
+
+
+def test_reference_typed_by_the_human_is_not_duplicated(tmp_path):
+    source, store, _, _ = setup(tmp_path)
+    prepare_today(source, store, FakeClient([reply(GOOD)]), COMPANY, TODAY)
+    [pending] = store.list_reminders({ReminderStatus.TO_VALIDATE})
+    typed = f"{GOOD.subject} [Réf. R-{pending.id:05d}]"
+    assert validate_reminder(store, source, pending.id, typed, GOOD.body, tmp_path / "o", TODAY).ok
+    assert store.get(pending.id).subject == typed
+
+
+def test_prepare_today_skips_clients_on_hold(tmp_path):
+    source, store, _, _ = setup(tmp_path)
+    recovery = RecoveryStore(store._conn)
+    recovery.add_hold("hotel des canuts", "suspension", None, "contestation", TODAY)
+    result = prepare_today(source, store, None, COMPANY, TODAY, recovery=recovery)
+    assert result.prepared == [] and not store.list_reminders({ReminderStatus.TO_VALIDATE})

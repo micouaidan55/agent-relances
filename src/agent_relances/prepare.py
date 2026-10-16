@@ -15,9 +15,10 @@ from agent_relances.drafting.writer import write_draft
 from agent_relances.models import (
     DraftSource, DueReminder, OverdueInvoice, PreparedReminder, ReminderDraft, ReminderStatus, Usage,
 )
-from agent_relances.outbox import save_reminder_eml
+from agent_relances.outbox import reference, save_reminder_eml, with_reference
 from agent_relances.rules.schedule import StageDelays, due_reminders
 from agent_relances.sources import InvoiceSource
+from agent_relances.storage.recovery import RecoveryStore
 from agent_relances.storage.repository import ReminderStore
 
 
@@ -57,10 +58,13 @@ class PreparationResult:
 
 def prepare_today(source: InvoiceSource, store: ReminderStore, api, company: str, today: date,
                   model: str = WRITER_MODEL, delays: StageDelays = StageDelays(),
-                  on_progress: Callable[[PreparedReminder], None] | None = None) -> PreparationResult:
+                  on_progress: Callable[[PreparedReminder], None] | None = None,
+                  recovery: RecoveryStore | None = None) -> PreparationResult:
     store.discard_pending()
     schedule = due_reminders(source.overdue(today), store.clients_by_key(), source.payment_history(),
-                             store.invoice_states(), store.last_contacts(), today, delays)
+                             store.invoice_states(), store.last_contacts(), today, delays,
+                             holds=recovery.active_holds(today) if recovery else None,
+                             planned_invoice_ids=recovery.planned_invoice_ids() if recovery else None)
     result = PreparationResult(missing_clients=schedule.missing_clients, escalated=schedule.to_humans)
     for invoice in schedule.to_humans:
         reminder_id = store.add_escalation(invoice, today)
@@ -102,6 +106,7 @@ def validate_reminder(store: ReminderStore, source: InvoiceSource, reminder_id: 
     problems = check_draft(ReminderDraft(subject=subject, body=body), stored.to_due(client))
     if problems:
         return ValidationResult(ok=False, problems=problems)
+    subject = with_reference(subject, reference("R", reminder_id))
     path = save_reminder_eml(outbox, reminder_id, client, subject, body)
     if not store.validate(reminder_id, subject, body, path, today):
         return ValidationResult(ok=False, problems=["Relance déjà traitée."])

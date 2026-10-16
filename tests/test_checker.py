@@ -149,3 +149,11 @@ def test_fallback_always_passes_the_check(stage, tone, legal, invoices):
     result = fallback_draft(due, "Atelier Lumière SAS")
     assert check_draft(result, due) == []
     assert result.body.rstrip().endswith("Atelier Lumière SAS") and "Paul Girard" in result.body
+
+
+def test_reference_in_the_subject_is_not_read_as_an_amount_or_a_date():
+    base = fallback_draft(due_reminder(), "Atelier Lumière SAS")
+    assert check_draft(base, due_reminder()) == []
+    with_ref = ReminderDraft(subject=f"{base.subject} [Réf. R-00042]", body=base.body)
+    assert check_draft(with_ref, due_reminder()) == []
+    assert check_draft(ReminderDraft(subject=f"{base.subject} [Réf. R-12012]", body=base.body), due_reminder()) == []

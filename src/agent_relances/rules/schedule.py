@@ -60,13 +60,23 @@ def due_reminders(
     last_contacts: dict[str, date],
     today: date,
     delays: StageDelays = StageDelays(),
+    holds: dict[str, date | None] | None = None,
+    planned_invoice_ids: set[int] | None = None,
 ) -> Schedule:
+    """`holds` : clients en pause (None = sans fin, date = reprise ce jour-là) ; `planned_invoice_ids` : factures
+    couvertes par un échéancier, qui ne suivent plus le cycle de relances."""
+    holds = {client_key(name): until for name, until in (holds or {}).items()}
+    planned = planned_invoice_ids or set()
     schedule = Schedule()
     due_by_client: dict[str, list[tuple[OverdueInvoice, Stage]]] = {}
     names: dict[str, str] = {}
     overdue_count: dict[str, int] = {}
     for invoice in overdue:
         key = client_key(invoice.customer)
+        if invoice.invoice_id in planned:
+            continue
+        if key in holds and (holds[key] is None or today < holds[key]):
+            continue
         overdue_count[key] = overdue_count.get(key, 0) + 1
         step = next_step(invoice, states.get(invoice.invoice_id, InvoiceState()), delays, today)
         if step is None:

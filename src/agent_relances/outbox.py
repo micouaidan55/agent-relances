@@ -7,6 +7,18 @@ from pathlib import Path
 from agent_relances.models import Client
 
 
+def reference(kind: str, number: int) -> str:
+    """Référence portée dans l'objet des mails déposés : R-00042 (relance), E-00007 (échéancier)."""
+    return f"{kind}-{number:05d}"
+
+
+def with_reference(subject: str, ref: str) -> str:
+    """Ajoute « [Réf. R-00042] » à la fin de l'objet, une seule fois."""
+    tag = f"[Réf. {ref}]"
+    subject = " ".join(subject.split())
+    return subject if subject.endswith(tag) else f"{subject} {tag}"
+
+
 def save_reminder_eml(outbox: Path, reminder_id: int, client: Client, subject: str, body: str) -> str:
     message = EmailMessage()
     message["To"] = formataddr((client.contact, client.email)) if client.contact else client.email
