@@ -1,3 +1,4 @@
+from decimal import Decimal
 import email
 import email.policy
 from datetime import date, timedelta
@@ -154,5 +155,19 @@ def test_prepare_today_skips_clients_on_hold(tmp_path):
     source, store, _, _ = setup(tmp_path)
     recovery = RecoveryStore(store._conn)
     recovery.add_hold("hotel des canuts", "suspension", None, "contestation", TODAY)
+    result = prepare_today(source, store, None, COMPANY, TODAY, recovery=recovery)
+    assert result.prepared == [] and not store.list_reminders({ReminderStatus.TO_VALIDATE})
+
+
+def test_without_recovery_the_same_setup_prepares_a_reminder(tmp_path):
+    source, store, _, _ = setup(tmp_path)
+    assert len(prepare_today(source, store, None, COMPANY, TODAY).prepared) == 1
+
+
+def test_prepare_today_excludes_an_invoice_under_a_plan(tmp_path):
+    source, store, _, invoice_id = setup(tmp_path)
+    recovery = RecoveryStore(store._conn)
+    recovery.create_plan("hotel des canuts", [invoice_id], Decimal("1200.50"),
+                         [Decimal("600.25"), Decimal("600.25")], TODAY)
     result = prepare_today(source, store, None, COMPANY, TODAY, recovery=recovery)
     assert result.prepared == [] and not store.list_reminders({ReminderStatus.TO_VALIDATE})

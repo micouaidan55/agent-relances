@@ -1,10 +1,13 @@
 """Dépôt d'une relance validée sous forme de brouillon .eml. Rien n'est jamais envoyé."""
 
+import re
 from email.message import EmailMessage
 from email.utils import formataddr, formatdate
 from pathlib import Path
 
 from agent_relances.models import Client
+
+_REF_TAG = re.compile(r"\s*\[Réf\. [A-Z]-\d+\]")
 
 
 def reference(kind: str, number: int) -> str:
@@ -13,10 +16,9 @@ def reference(kind: str, number: int) -> str:
 
 
 def with_reference(subject: str, ref: str) -> str:
-    """Ajoute « [Réf. R-00042] » à la fin de l'objet, une seule fois."""
-    tag = f"[Réf. {ref}]"
-    subject = " ".join(subject.split())
-    return subject if subject.endswith(tag) else f"{subject} {tag}"
+    """Place « [Réf. R-00042] » à la fin de l'objet, une seule fois : toute autre référence est retirée."""
+    subject = " ".join(_REF_TAG.sub("", subject).split())
+    return f"{subject} [Réf. {ref}]"
 
 
 def save_reminder_eml(outbox: Path, reminder_id: int, client: Client, subject: str, body: str) -> str:

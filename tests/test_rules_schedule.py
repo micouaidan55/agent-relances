@@ -122,3 +122,11 @@ def test_invoice_under_a_plan_is_skipped_but_a_later_invoice_is_reminded():
 def test_planned_invoice_does_not_escalate_to_a_human():
     schedule = run_with([late(60)], planned={1})
     assert schedule.reminders == [] and schedule.to_humans == []
+
+
+def test_planned_invoice_still_counts_toward_the_chronic_profile():
+    invoices = [late(20, 1, "AL-1"), late(5, 2, "AL-2")]
+    [reminder] = run_with(invoices, planned={1}).reminders
+    assert reminder.profile is Profile.CHRONIC
+    [alone] = run_with([late(5, 2, "AL-2")]).reminders
+    assert alone.profile is not Profile.CHRONIC

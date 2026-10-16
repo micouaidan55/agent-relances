@@ -73,11 +73,11 @@ def due_reminders(
     overdue_count: dict[str, int] = {}
     for invoice in overdue:
         key = client_key(invoice.customer)
-        if invoice.invoice_id in planned:
-            continue
         if key in holds and (holds[key] is None or today < holds[key]):
             continue
-        overdue_count[key] = overdue_count.get(key, 0) + 1
+        overdue_count[key] = overdue_count.get(key, 0) + 1  # une facture sous échéancier reste en retard
+        if invoice.invoice_id in planned:
+            continue
         step = next_step(invoice, states.get(invoice.invoice_id, InvoiceState()), delays, today)
         if step is None:
             continue
