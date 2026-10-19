@@ -84,7 +84,11 @@ def installment_steps(
     delays: StageDelays = StageDelays(),
 ) -> list[InstallmentDue]:
     """Relances de mensualités dues aujourd'hui : un palier à la fois, le suivant seulement une fois le précédent
-    validé et son délai atteint, et pas avant MIN_GAP_DAYS jours après le dernier contact avec le client."""
+    validé et son délai atteint, et pas avant MIN_GAP_DAYS jours après le dernier contact avec le client.
+
+    Renvoie TOUTES les mensualités dues de ce plan, sans regroupement : c'est à l'appelant de n'en garder qu'une par
+    client et par jour (la plus ancienne, voir web._due_installments), de sauter les clients en pause, et de passer
+    en `last_contact` le dernier contact fusionné (relances et relances de mensualités, plans.merged_last_contacts)."""
     if plan.status is not PlanStatus.ACTIVE:
         return []
     if last_contact is not None and (today - last_contact).days < MIN_GAP_DAYS:

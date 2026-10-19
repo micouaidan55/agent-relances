@@ -8,11 +8,11 @@ import pytest
 from streamlit.testing.v1 import AppTest
 
 from agent_relances.models import ActionKind, PlanStatus, ReminderDraft, ReminderStatus, ReplyIntent, ReplyStatus
-from agent_relances.web import md_escape
 from agent_relances.rules.installments import plan_amounts
 from agent_relances.storage.db import connect
 from agent_relances.storage.recovery import RecoveryStore
 from agent_relances.storage.repository import ReminderStore
+from agent_relances.web import md_escape
 from tests.factories import client, due_reminder, factures_conn, issued, overdue
 
 APP_PATH = str(Path(__file__).resolve().parent.parent / "app" / "main.py")
@@ -205,8 +205,13 @@ def active_plan(recovery, agreed=date(2026, 9, 5)) -> int:
 
 
 def test_new_pages_show_their_empty_state(env):
-    for page in PAGES[-3:]:
-        run_app(page)
+    expected = {"app_pages/reponses.py": "Aucune réponse à traiter",
+                "app_pages/echeanciers.py": "Aucun échéancier pour l'instant.",
+                "app_pages/contentieux.py": "Aucun dossier de contentieux."}
+    assert set(expected) == set(PAGES[-3:])
+    for page, text in expected.items():
+        at = run_app(page)
+        assert any(text in i.value for i in at.info), page
 
 
 def test_collect_without_api_key_stores_replies_for_a_human(env, recovery):
@@ -311,8 +316,9 @@ def test_installment_reminder_is_validated_and_deposited(env, recovery):
     assert recovery.installment_reminders(plan_id) == {1: [(1, TODAY)]}
     [eml_file] = (tmp_path / "deposees").glob("echeancier_*_mensualite-1-palier-1.eml")
     assert f"[Réf. E-{plan_id:05d}]" in message_from_bytes(eml_file.read_bytes(), policy=policy.default)["Subject"]
-    run_app("app_pages/echeanciers.py")                       # recharger : plus de relance due (délai de 7 jours)
-    assert not any(b.key == key for b in at.button)
+    reloaded = run_app("app_pages/echeanciers.py")            # recharger : plus de relance due (délai de 7 jours)
+    assert not any(b.key == key for b in reloaded.button)
+    assert any("Aucune relance de mensualité due" in i.value for i in reloaded.info)
 
 
 def test_only_the_earliest_installment_per_client_is_proposed(env, recovery):
