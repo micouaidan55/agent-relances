@@ -13,7 +13,7 @@ resolution-markers = [
 [[package]]
 name = "agent-emails"
 version = "0.1.0"
-source = { git = "https://github.com/micouaidan55/agent-emails#f3b0a60a0dad45a89df26523b1e4a2086b3a3ad5" }
+source = { git = "https://github.com/micouaidan55/agent-emails#016a9c98bf8b58137016bffb3fb5946ed0f6fd7a" }
 dependencies = [
     { name = "agent-factures" },
     { name = "anthropic" },
