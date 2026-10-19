@@ -18,12 +18,12 @@ DATES = [date(2026, 11, 15), date(2026, 12, 15), date(2027, 1, 15)]
 AMOUNTS = [D("250.00")] * 3
 
 
-def make_plan(total="750.00", count=3, active=False, plan_id=7):
-    amounts = plan_amounts(D(total), count)
+def make_plan(total="750.00", count=3, active=False, plan_id=7, reason=None):
+    amounts = plan_amounts(D(total), count, exception=bool(reason))
     dates = installment_dates(date(2026, 10, 16), len(amounts)) if active else [None] * len(amounts)
     return Plan(id=plan_id, client_key="hotel des canuts", invoice_ids=[1, 2], total=D(total),
                 status=PlanStatus.ACTIVE if active else PlanStatus.PROPOSED, proposed_on=date(2026, 10, 1),
-                agreed_on=date(2026, 10, 16) if active else None,
+                agreed_on=date(2026, 10, 16) if active else None, exception_reason=reason,
                 installments=[Installment(number=i + 1, amount=a, due_date=d)
                               for i, (a, d) in enumerate(zip(amounts, dates))])
 
@@ -290,3 +290,70 @@ def test_single_installment_check_without_count_statement():
     wrong = ReminderDraft(subject="Rappel", body=draft.body + " Vous aviez 3 mensualités, soit 4 mois.")
     problems = check_plan_draft(wrong, [D("250.00")], None, [date(2026, 11, 15)], require_count=False)
     assert any("faux" in p for p in problems) and any("Durée" in p for p in problems)
+
+
+# --- dérogation : 5 à 12 mensualités ---
+
+MOTIF = "Client en difficulté de trésorerie"
+
+
+@pytest.mark.parametrize("count", [5, 6, 7, 8, 9, 10, 11, 12])
+def test_fallbacks_pass_the_checker_with_an_exception(count):
+    total = f"{count * 100 + 0.01:.2f}" if count % 2 else f"{count * 100}.00"
+    plan = make_plan(total, count, reason=MOTIF)
+    assert len(plan.installments) == count
+    amounts = [i.amount for i in plan.installments]
+    proposal = fallback_proposal(plan, client(), "Atelier Lumière SAS", None)
+    assert f"{count} mensualités" in proposal.body
+    assert check_plan_draft(proposal, amounts, plan.total, None) == []
+    active = make_plan(total, count, active=True, reason=MOTIF)
+    confirmation = fallback_confirmation(active, client(), "Atelier Lumière SAS")
+    assert check_plan_draft(confirmation, amounts, plan.total, [i.due_date for i in active.installments]) == []
+
+
+@pytest.mark.parametrize("count", [6, 12])
+def test_fallback_texts_for_six_and_twelve_installments(count):
+    plan = make_plan("1200.00", count, reason=MOTIF)
+    proposal = fallback_proposal(plan, client(), "A", None)
+    assert f"en {count} mensualités" in proposal.body
+    assert proposal.body.count("- mensualité ") == count and f"- mensualité {count} :" in proposal.body
+    active = make_plan("1200.00", count, active=True, reason=MOTIF)
+    confirmation = fallback_confirmation(active, client(), "A")
+    assert confirmation.body.count("- mensualité ") == count and f"en {count} mensualités" in confirmation.body
+
+
+@pytest.mark.parametrize("count,words", [(5, "cinq"), (6, "six"), (12, "douze")])
+def test_count_in_words_up_to_twelve(count, words):
+    plan = make_plan("1200.00", count, reason=MOTIF)
+    amounts = [i.amount for i in plan.installments]
+    lines = " et ".join(euros_fr(a) for a in amounts)
+    assert check_plan_draft(mail(f"{words.capitalize()} mensualités : {lines}. Total : 1 200,00 €."),
+                            amounts, plan.total, None) == []
+
+
+def euros_fr(amount):
+    from agent_relances.formatting import euros
+    return euros(amount)
+
+
+def test_drafts_of_an_exception_plan_are_accepted_with_the_reason(tmp_path):
+    plan = make_plan("1200.00", 12, reason=MOTIF)
+    draft, source, problems, _ = proposal_draft(None, plan, client(), "A", None)
+    assert source is DraftSource.FALLBACK and check_plan_draft(draft, [i.amount for i in plan.installments],
+                                                               plan.total, None) == []
+    path = deposit_plan_draft(tmp_path, plan, client(), draft)
+    assert Path(path).exists()
+    active = make_plan("1200.00", 12, active=True, reason=MOTIF)
+    confirmation, *_ = confirmation_draft(None, active, client(), "A")
+    assert Path(deposit_plan_draft(tmp_path, active, client(), confirmation)).exists()
+
+
+def test_exception_plan_without_reason_is_refused_by_drafts(tmp_path):
+    plan = make_plan("1200.00", 6, reason=MOTIF).model_copy(update={"exception_reason": None})
+    with pytest.raises(PlanRuleError):
+        proposal_draft(None, plan, client(), "A", None)
+    with pytest.raises(PlanRuleError):
+        deposit_plan_draft(tmp_path, plan, client(), mail("6 mensualités"))
+    blank = plan.model_copy(update={"exception_reason": "  "})
+    with pytest.raises(PlanRuleError):
+        proposal_draft(None, blank, client(), "A", None)

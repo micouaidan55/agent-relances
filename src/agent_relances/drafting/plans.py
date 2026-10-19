@@ -68,7 +68,8 @@ def _facts(plan: Plan, client: Client, company: str, requested: int | None, invo
 
 
 def _amounts(plan: Plan) -> list[Decimal]:
-    problems = plan_violations([i.amount for i in plan.installments], plan.total)
+    problems = plan_violations([i.amount for i in plan.installments], plan.total,
+                               exception=bool(plan.exception_reason and plan.exception_reason.strip()))
     if problems:
         raise PlanRuleError(" ".join(problems))
     return [i.amount for i in plan.installments]
