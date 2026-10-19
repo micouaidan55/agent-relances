@@ -307,10 +307,14 @@ class RecoveryStore:
     # --- Contentieux ---
 
     def add_dispute(self, client_key_: str, folder: str, total_due: Decimal, today: date) -> int:
-        cursor = self._conn.execute(
-            "INSERT INTO disputes (client_key, folder, created_on, total_due) VALUES (?, ?, ?, ?)",
-            (client_key(client_key_), folder, today.isoformat(), str(total_due)),
-        )
+        try:
+            cursor = self._conn.execute(
+                "INSERT INTO disputes (client_key, folder, created_on, total_due) VALUES (?, ?, ?, ?)",
+                (client_key(client_key_), folder, today.isoformat(), str(total_due)),
+            )
+        except sqlite3.IntegrityError as error:  # index unique : un seul contentieux par client
+            self._conn.rollback()
+            raise ValueError("Un contentieux est déjà ouvert pour ce client.") from error
         self._conn.commit()
         return int(cursor.lastrowid)
 
@@ -333,9 +337,12 @@ class RecoveryStore:
                     (plan_status.value, today.isoformat(), plan_id, *allowed))
                 if cursor.rowcount != 1:
                     raise ValueError("Le statut de l'échéancier a changé : contentieux non ouvert.")
-            cursor = self._conn.execute(
-                "INSERT INTO disputes (client_key, folder, created_on, total_due) VALUES (?, ?, ?, ?)",
-                (key, folder, today.isoformat(), str(total_due)))
+            try:
+                cursor = self._conn.execute(
+                    "INSERT INTO disputes (client_key, folder, created_on, total_due) VALUES (?, ?, ?, ?)",
+                    (key, folder, today.isoformat(), str(total_due)))
+            except sqlite3.IntegrityError as error:  # index unique : filet si deux ouvertures se croisent
+                raise ValueError("Un contentieux est déjà ouvert pour ce client.") from error
             self._conn.commit()
             return int(cursor.lastrowid)
         except BaseException:

@@ -123,6 +123,7 @@ CREATE TABLE IF NOT EXISTS disputes (
     created_on TEXT NOT NULL,
     total_due TEXT NOT NULL
 );
+CREATE UNIQUE INDEX IF NOT EXISTS one_dispute_per_client ON disputes (client_key);
 """
 
 

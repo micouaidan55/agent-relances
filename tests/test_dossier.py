@@ -1,4 +1,5 @@
 import re
+import sqlite3
 from datetime import date
 from decimal import Decimal
 from email import policy
@@ -332,3 +333,17 @@ def test_build_failure_removes_folder(world, monkeypatch):
     with pytest.raises(RuntimeError):
         dispute(world)
     assert list(world["out"].iterdir()) == []
+
+
+def test_log_failure_after_commit_keeps_the_dossier_and_the_dispute(world, monkeypatch):
+    w = world
+
+    def boom(*a, **k):
+        raise sqlite3.OperationalError("journal verrouillé")
+
+    monkeypatch.setattr(w["reminders"], "log", boom)
+    result = dispute(w)                                       # le contentieux est enregistré : pas d'exception
+    assert result.folder.is_dir() and result.pdf_path.exists()
+    [d] = w["recovery"].list_disputes()
+    assert d["folder"] == str(result.folder)
+    assert w["recovery"].active_holds(TODAY) == {KEY: None}

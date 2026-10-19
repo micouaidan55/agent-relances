@@ -261,3 +261,25 @@ def test_last_installment_contacts_per_client(store):
     second = store.create_plan("hotel-canuts", [2], Decimal("500"), [Decimal("250")] * 2, TODAY)
     store.record_installment_reminder(second, 1, 1, date(2026, 11, 25), None)
     assert store.last_installment_contacts() == {"hotel-canuts": date(2026, 12, 2)}
+
+
+def test_unique_index_backstops_a_second_dispute(store):
+    store.add_dispute("hotel-canuts", "a", Decimal("10"), TODAY)
+    with pytest.raises(ValueError, match="déjà"):
+        store.add_dispute("Hotel-Canuts", "b", Decimal("10"), TODAY)
+    with pytest.raises(sqlite3.IntegrityError):
+        store._conn.execute("INSERT INTO disputes (client_key, folder, created_on, total_due) VALUES"
+                            " ('hotel-canuts', 'c', '2026-10-16', '1')")
+    assert len(store.list_disputes()) == 1
+
+
+def test_existing_database_gets_the_dispute_index(tmp_path):
+    path = tmp_path / "ancienne.db"
+    old = sqlite3.connect(path)
+    old.execute("CREATE TABLE disputes (id INTEGER PRIMARY KEY AUTOINCREMENT, client_key TEXT NOT NULL,"
+                " folder TEXT NOT NULL, created_on TEXT NOT NULL, total_due TEXT NOT NULL)")
+    old.commit()
+    old.close()
+    conn = connect(str(path))
+    indexes = {row["name"]: row["unique"] for row in conn.execute("PRAGMA index_list(disputes)")}
+    assert indexes.get("one_dispute_per_client") == 1

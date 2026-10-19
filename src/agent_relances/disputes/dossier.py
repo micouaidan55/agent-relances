@@ -1,5 +1,6 @@
 """Dossier de contentieux pour l'avocat : PDF, copie des factures, brouillon .eml. Rien n'est jamais envoyé."""
 
+import logging
 import re
 import shutil
 from dataclasses import dataclass
@@ -20,6 +21,8 @@ from agent_relances.outbox import _write_eml
 from agent_relances.sources import InvoiceSource
 from agent_relances.storage.recovery import RecoveryStore
 from agent_relances.storage.repository import ReminderStore, StoredReminder
+
+log = logging.getLogger(__name__)
 
 PDF_NAME = "dossier_recouvrement.pdf"
 EML_NAME = "brouillon_avocat.eml"
@@ -241,10 +244,14 @@ def open_dispute(
     try:
         recovery.open_dispute_records(key, str(result.folder), result.remaining_due, plan.id if plan else None,
                                       new_status, today)
+    except BaseException:  # rien n'est enregistré : le dossier préparé est retiré
+        shutil.rmtree(result.folder, ignore_errors=True)
+        raise
+    # Le contentieux est enregistré : son dossier ne doit plus jamais être supprimé, même si le journal échoue.
+    try:
         reminders.log(None, "contentieux_ouvert", {"client": key, "dossier": str(result.folder),
                                                    "reste_du": str(result.remaining_due),
                                                    "manquants": result.missing})
-    except BaseException:
-        shutil.rmtree(result.folder, ignore_errors=True)
-        raise
+    except Exception:
+        log.exception("Contentieux ouvert pour %s, mais le journal n'a pas pu être écrit.", key)
     return result
