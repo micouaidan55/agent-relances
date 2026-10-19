@@ -272,6 +272,34 @@ class RecoveryStore:
         self._conn.commit()
         return int(cursor.lastrowid)
 
+    def open_dispute_records(
+        self, client_key_: str, folder: str, total_due: Decimal, plan_id: int | None, plan_status: PlanStatus | None,
+        today: date,
+    ) -> int:
+        """Ouverture d'un contentieux en une seule transaction : suspension sans fin, statut du plan, litige."""
+        key = client_key(client_key_)
+        try:
+            if any(r["client_key"] == key for r in self._conn.execute("SELECT client_key FROM disputes")):
+                raise ValueError("Un contentieux est déjà ouvert pour ce client.")
+            self._conn.execute(
+                "INSERT INTO holds (client_key, kind, until, reason, created_on) VALUES (?, 'suspension', NULL,"
+                " 'contentieux', ?)", (key, today.isoformat()))
+            if plan_id is not None and plan_status is not None:
+                allowed = (PlanStatus.ACTIVE.value,) if plan_status is PlanStatus.BROKEN else _OPEN_PLAN
+                cursor = self._conn.execute(
+                    f"UPDATE plans SET status = ?, closed_on = ? WHERE id = ? AND status IN ({', '.join('?' for _ in allowed)})",
+                    (plan_status.value, today.isoformat(), plan_id, *allowed))
+                if cursor.rowcount != 1:
+                    raise ValueError("Le statut de l'échéancier a changé : contentieux non ouvert.")
+            cursor = self._conn.execute(
+                "INSERT INTO disputes (client_key, folder, created_on, total_due) VALUES (?, ?, ?, ?)",
+                (key, folder, today.isoformat(), str(total_due)))
+            self._conn.commit()
+            return int(cursor.lastrowid)
+        except BaseException:
+            self._conn.rollback()
+            raise
+
     def list_disputes(self) -> list[dict]:
         rows = self._conn.execute("SELECT * FROM disputes ORDER BY id DESC").fetchall()
         return [

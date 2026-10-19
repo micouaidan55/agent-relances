@@ -1,5 +1,6 @@
 """Dossier de contentieux pour l'avocat : PDF, copie des factures, brouillon .eml. Rien n'est jamais envoyé."""
 
+import re
 import shutil
 from dataclasses import dataclass
 from datetime import date
@@ -32,19 +33,40 @@ class DossierResult:
     eml_path: Path
     copied: list[str]
     missing: list[str]
-    total_due: Decimal
+    remaining_due: Decimal  # reste dû, sans double compte avec l'échéancier
+
+
+def _safe(text: str) -> str:
+    """Fragment de nom de fichier : rien hors lettres, chiffres, _ et -, jamais de point ou tiret bas en tête."""
+    return re.sub(r"[^\w-]", "_", text).lstrip("._") or "client"
+
+
+def _safe_file(text: str) -> str:
+    return re.sub(r"[^\w.-]", "_", text).lstrip("._") or "fichier"
+
+
+def _remaining_due(invoices: list[OverdueInvoice], plan: Plan | None) -> Decimal:
+    """Impayées hors échéancier + min(impayées couvertes, reste de l'échéancier) : pas de double compte."""
+    if plan is None or plan.status is PlanStatus.CANCELLED:
+        return sum((i.amount for i in invoices), Decimal("0"))
+    covered = sum((i.amount for i in invoices if i.invoice_id in plan.invoice_ids), Decimal("0"))
+    other = sum((i.amount for i in invoices if i.invoice_id not in plan.invoice_ids), Decimal("0"))
+    return max(other + min(covered, plan.remaining), Decimal("0"))
 
 
 def _new_folder(out_root: Path, client: Client, today: date) -> Path:
     """Dossier `<client sans espaces>_<AAAA-MM-JJ>` ; un dossier existant n'est jamais réutilisé (_2, _3…)."""
     out_root = Path(out_root)
     out_root.mkdir(parents=True, exist_ok=True)
-    base = f"{client.key.replace(' ', '')}_{today.isoformat()}"
+    base = f"{_safe(client.key.replace(' ', ''))}_{today.isoformat()}"
     number = 1
     while True:
         folder = out_root / (base if number == 1 else f"{base}_{number}")
         try:
             folder.mkdir()
+            if folder.resolve().parent != out_root.resolve():
+                folder.rmdir()
+                raise ValueError("Dossier hors de la racine de sortie.")
             return folder
         except FileExistsError:
             number += 1
@@ -66,12 +88,17 @@ def _copy_files(invoices: list[OverdueInvoice], files: dict[int, str], folder: P
         if source.resolve() in done:
             continue
         name = source.name
-        if (folder / name).exists() or name in (PDF_NAME, EML_NAME):
-            name = f"{invoice.number}_{source.name}"
+        safe_name = _safe_file(source.name)
+        taken = {PDF_NAME.lower(), EML_NAME.lower()} | {p.name.lower() for p in folder.iterdir()}
+        if name.lower() in taken:
+            name = f"{_safe(invoice.number)}_{safe_name}"
         counter = 2
-        while (folder / name).exists():
-            name = f"{invoice.number}_{counter}_{source.name}"
+        while name.lower() in taken:
+            name = f"{_safe(invoice.number)}_{counter}_{safe_name}"
             counter += 1
+        if (folder / name).resolve().parent != folder.resolve():
+            missing.append(source.name)
+            continue
         shutil.copy2(source, folder / name)
         done[source.resolve()] = name
         copied.append(name)
@@ -118,7 +145,7 @@ def _write_pdf(path, client, invoices, total, remaining, timeline, replies, plan
 
     story.append(_p("Réponses du client", h))
     if replies:
-        story.append(_table([["Reçue le", "Résumé"]] + [[str(r.get("received_at", ""))[:10], r.get("summary", "")]
+        story.append(_table([["Reçue le", "Résumé"]] + [[str(r.get("received_at", ""))[:10], r.get("summary") or ""]
                                                          for r in replies], [3 * cm, 12 * cm], styles))
     else:
         story.append(_p("Aucune réponse du client.", body))
@@ -163,8 +190,7 @@ def build_dossier(
 ) -> DossierResult:
     """Construit le dossier et le brouillon pour l'avocat ; n'envoie rien."""
     total = sum((i.amount for i in invoices), Decimal("0"))
-    received = sum((i.amount for i in plan.installments if i.received_on is not None), Decimal("0")) if plan else 0
-    remaining = total - received
+    remaining = _remaining_due(invoices, plan)
     timeline = sorted(
         [(r.decided_on, f"{r.subject}") for r in reminders
          if r.status is ReminderStatus.VALIDATED and r.decided_on is not None]
@@ -173,17 +199,21 @@ def build_dossier(
         key=lambda item: item[0],
     )
     folder = _new_folder(out_root, client, today)
-    copied, missing = _copy_files(invoices, files, folder, base_dir)
-    pdf_path = folder / PDF_NAME
-    _write_pdf(pdf_path, client, invoices, total, remaining, timeline, replies, plan, copied, missing, company, today)
-    lawyer = Client(name="Avocat", email=lawyer_email.strip())
-    eml_path = Path(_write_eml(
-        folder, EML_NAME, f"contentieux-{folder.name}", lawyer,
-        f"Dossier de recouvrement - {client.name}",
-        _eml_body(client, lawyer.email, remaining, len(invoices), folder, company),
-    ))
+    try:
+        copied, missing = _copy_files(invoices, files, folder, base_dir)
+        pdf_path = folder / PDF_NAME
+        _write_pdf(pdf_path, client, invoices, total, remaining, timeline, replies, plan, copied, missing, company, today)
+        lawyer = Client(name="Avocat", email=lawyer_email.strip())
+        eml_path = Path(_write_eml(
+            folder, EML_NAME, f"contentieux-{folder.name}", lawyer,
+            f"Dossier de recouvrement - {client.name}",
+            _eml_body(client, lawyer.email, remaining, len(invoices), folder, company),
+        ))
+    except BaseException:
+        shutil.rmtree(folder, ignore_errors=True)  # ce dossier-là seulement, jamais d'un autre
+        raise
     return DossierResult(folder=folder, pdf_path=pdf_path, eml_path=eml_path, copied=copied, missing=missing,
-                         total_due=remaining)
+                         remaining_due=remaining)
 
 
 def open_dispute(
@@ -205,13 +235,16 @@ def open_dispute(
         [r for r in recovery.list_replies() if r["client_key"] == key], plan, out_root, lawyer_email, company, today,
         base_dir, installment_reminders=done,
     )
-    if plan is not None:
-        if plan.status is PlanStatus.ACTIVE:
-            recovery.set_plan_status(plan.id, PlanStatus.BROKEN, today)
-        else:  # proposé : jamais accepté, il ne doit plus retenir les factures hors du cycle de relances
-            recovery.set_plan_status(plan.id, PlanStatus.CANCELLED, today)
-    recovery.add_hold(key, "suspension", None, "contentieux", today)
-    recovery.add_dispute(key, str(result.folder), result.total_due, today)
-    reminders.log(None, "contentieux_ouvert", {"client": key, "dossier": str(result.folder),
-                                               "reste_du": str(result.total_due), "manquants": result.missing})
+    new_status = None
+    if plan is not None:  # en cours : rompu ; proposé, jamais accepté : annulé (il ne doit plus retenir les factures)
+        new_status = PlanStatus.BROKEN if plan.status is PlanStatus.ACTIVE else PlanStatus.CANCELLED
+    try:
+        recovery.open_dispute_records(key, str(result.folder), result.remaining_due, plan.id if plan else None,
+                                      new_status, today)
+        reminders.log(None, "contentieux_ouvert", {"client": key, "dossier": str(result.folder),
+                                                   "reste_du": str(result.remaining_due),
+                                                   "manquants": result.missing})
+    except BaseException:
+        shutil.rmtree(result.folder, ignore_errors=True)
+        raise
     return result

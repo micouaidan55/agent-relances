@@ -71,7 +71,7 @@ def test_pdf_content_french(world):
     text = pdf_text(result.pdf_path)
     assert "Dossier de recouvrement" in text and "Hôtel des Canuts" in text and "Paul Girard" in text
     assert "AL-2026-101" in text and "AL-2026-102" in text
-    assert "1 500,50 €" in text and result.total_due == D("1500.50")
+    assert "1 500,50 €" in text and result.remaining_due == D("1500.50")
     for day in ("03/10/2026", "20/10/2026"):
         assert day in text
     assert "Deuxième relance" in text and "conteste la prestation" in text
@@ -93,7 +93,7 @@ def test_remaining_after_received_installments(world):
     plan = world["recovery"].get_plan(pid)
     result = build(world, plan=plan)
     text = pdf_text(result.pdf_path)
-    assert result.total_due == D("750.25")
+    assert result.remaining_due == D("750.25")
     assert "750,25 €" in text and "Reste dû" in text
     assert "reçue le 20/11/2026" in text and "reçue" in text.lower() and "manquée" in text.lower()
 
@@ -173,7 +173,7 @@ def test_open_dispute_stops_everything(world):
     before = installment_steps(plan, {}, None, plan.installments[0].due_date.replace(day=20))
     assert before
     result = dispute(w)
-    assert result.pdf_path.exists() and result.total_due == D("1500.50")
+    assert result.pdf_path.exists() and result.remaining_due == D("1500.50")
     assert w["recovery"].get_plan(pid).status is PlanStatus.BROKEN
     assert w["recovery"].active_holds(TODAY) == {KEY: None}
     [d] = w["recovery"].list_disputes()
@@ -210,3 +210,125 @@ def test_no_unpaid_invoice_refused(tmp_path):
     with pytest.raises(ValueError, match="impayée"):
         dispute(w)
     assert w["recovery"].list_disputes() == []
+
+
+def custom_client(name):
+    return client(name=name)
+
+
+@pytest.mark.parametrize("name", ["Dupont/Fils", "../x", "..", "/"])
+def test_folder_name_is_sanitized_inside_out_root(world, name):
+    invoices = world["source"].unpaid_of(KEY, TODAY)
+    result = build_dossier(custom_client(name), invoices, {}, [], [], None, world["out"], "", "X", TODAY, world["base"])
+    assert result.folder.resolve().parent == world["out"].resolve()
+    assert "/" not in result.folder.name and not result.folder.name.startswith(".")
+
+
+def test_clash_name_is_sanitized(world, tmp_path):
+    other = tmp_path / "ailleurs"
+    other.mkdir()
+    (other / "scan.pdf").write_bytes(b"deux")
+    (world["base"] / "scan.pdf").write_bytes(b"un")
+    conn, repo = factures_conn()
+    a = repo.add(issued("2026/101", due=date(2026, 9, 1)), "x")
+    b = repo.add(issued("../2026/102", due=date(2026, 9, 2)), "y")
+    invoices = InvoiceSource(conn).unpaid_of(KEY, TODAY)
+    files = {a: "scan.pdf", b: str(other / "scan.pdf")}
+    result = build_dossier(client(), invoices, files, [], [], None, world["out"], "", "X", TODAY, world["base"])
+    assert sorted(result.copied) == ["2026_101_scan.pdf", "scan.pdf"] or sorted(result.copied) == ["2026_102_scan.pdf", "scan.pdf"]
+    assert {p.parent.resolve() for p in result.folder.iterdir()} == {result.folder.resolve()}
+
+
+def test_reserved_names_are_case_insensitive(world):
+    (world["base"] / "DOSSIER_RECOUVREMENT.PDF").write_bytes(b"x")
+    invoices = world["source"].unpaid_of(KEY, TODAY)
+    files = {world["ids"][0]: "DOSSIER_RECOUVREMENT.PDF"}
+    result = build_dossier(client(), invoices, files, [], [], None, world["out"], "", "X", TODAY, world["base"])
+    assert result.copied == ["AL-2026-101_DOSSIER_RECOUVREMENT.PDF"]
+    assert PdfReader(result.pdf_path).pages
+
+
+def test_remaining_with_covered_invoice_already_paid(world):
+    w = world
+    # facture couverte AL-101 payée dans agent-factures : seule AL-102 reste impayée et couverte
+    pid = w["recovery"].create_plan(KEY, list(w["ids"]), D("1500.50"), [D("750.25"), D("750.25")], date(2026, 10, 1))
+    w["recovery"].activate_plan(pid, date(2026, 10, 16))
+    w["recovery"].mark_received(pid, 1, date(2026, 11, 15))
+    plan = w["recovery"].get_plan(pid)
+    invoices = [i for i in w["source"].unpaid_of(KEY, TODAY) if i.invoice_id == w["ids"][1]]  # 300,00
+    result = build_dossier(client(), invoices, {}, [], [], plan, w["out"], "", "X", TODAY, w["base"])
+    assert result.remaining_due == D("300.00")  # min(300, 750,25)
+
+
+def test_remaining_with_uncovered_newer_invoice(world):
+    w = world
+    pid = w["recovery"].create_plan(KEY, [w["ids"][0]], D("1200.50"), [D("600.25"), D("600.25")], date(2026, 10, 1))
+    w["recovery"].activate_plan(pid, date(2026, 10, 16))
+    w["recovery"].mark_received(pid, 1, date(2026, 11, 15))
+    plan = w["recovery"].get_plan(pid)
+    result = build(w, plan=plan)  # AL-101 couverte (reste 600,25) + AL-102 hors échéancier (300,00)
+    assert result.remaining_due == D("900.25")
+    assert "900,25 €" in pdf_text(result.pdf_path)
+
+
+def test_cancelled_plan_is_ignored_for_remaining(world):
+    w = world
+    pid = w["recovery"].create_plan(KEY, list(w["ids"]), D("1500.50"), [D("750.25")] * 2, date(2026, 10, 1))
+    w["recovery"].set_plan_status(pid, PlanStatus.CANCELLED, TODAY)
+    assert build(w, plan=w["recovery"].get_plan(pid)).remaining_due == D("1500.50")
+
+
+def test_proposed_plan_is_cancelled(world):
+    w = world
+    pid = w["recovery"].create_plan(KEY, list(w["ids"]), D("1500.50"), [D("750.25")] * 2, date(2026, 10, 1))
+    dispute(w)
+    assert w["recovery"].get_plan(pid).status is PlanStatus.CANCELLED
+
+
+def test_installment_reminders_in_timeline(world):
+    w = world
+    pid = w["recovery"].create_plan(KEY, list(w["ids"]), D("1500.50"), [D("750.25")] * 2, date(2026, 10, 1))
+    w["recovery"].activate_plan(pid, date(2026, 10, 16))
+    w["recovery"].record_installment_reminder(pid, 1, 1, date(2026, 11, 18), None)
+    result = dispute(w)
+    text = pdf_text(result.pdf_path)
+    assert "18/11/2026" in text and "mensualité 1" in text
+
+
+def test_dispute_failure_in_transaction_leaves_nothing(world):
+    w = world
+    pid = w["recovery"].create_plan(KEY, list(w["ids"]), D("1500.50"), [D("750.25")] * 2, date(2026, 10, 1))
+    w["recovery"].activate_plan(pid, date(2026, 10, 16))
+    w["recovery"]._conn.execute("DROP TABLE disputes")  # l'écriture du litige, dernière, échoue
+    with pytest.raises(Exception):
+        dispute(w)
+    assert w["recovery"].active_holds(TODAY) == {}
+    assert w["recovery"].get_plan(pid).status is PlanStatus.ACTIVE
+    assert not w["out"].exists() or list(w["out"].iterdir()) == []
+
+
+def test_dispute_failure_removes_folder_only(world, monkeypatch):
+    w = world
+    w["out"].mkdir()
+    (w["out"] / "autre_dossier").mkdir()
+
+    def boom(*a, **k):
+        raise RuntimeError("panne")
+
+    monkeypatch.setattr(RecoveryStore, "open_dispute_records", boom)
+    with pytest.raises(RuntimeError):
+        dispute(w)
+    assert [p.name for p in w["out"].iterdir()] == ["autre_dossier"]
+    assert w["recovery"].list_disputes() == [] and w["recovery"].active_holds(TODAY) == {}
+
+
+def test_build_failure_removes_folder(world, monkeypatch):
+    import agent_relances.disputes.dossier as mod
+
+    def boom(*a, **k):
+        raise RuntimeError("pdf")
+
+    monkeypatch.setattr(mod, "_write_pdf", boom)
+    with pytest.raises(RuntimeError):
+        dispute(world)
+    assert list(world["out"].iterdir()) == []
