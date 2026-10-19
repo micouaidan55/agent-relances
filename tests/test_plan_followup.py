@@ -153,3 +153,18 @@ def test_cancel_plan_cancels_a_proposed_or_untouched_plan(recovery):
     assert cancel_plan(recovery, plan_id, date(2026, 11, 20)) == []
     assert recovery.get_plan(plan_id).status is PlanStatus.CANCELLED
     assert cancel_plan(recovery, plan_id, date(2026, 11, 20))                  # déjà clos
+
+
+def test_merged_last_contacts_take_the_latest_of_both_kinds():
+    from agent_relances.plans import merged_last_contacts
+
+    class Reminders:
+        def last_contacts(self):
+            return {"a": date(2026, 10, 1), "b": date(2026, 10, 9)}
+
+    class Recovery:
+        def last_installment_contacts(self):
+            return {"a": date(2026, 10, 5), "c": date(2026, 10, 2)}
+
+    assert merged_last_contacts(Reminders(), Recovery()) == {
+        "a": date(2026, 10, 5), "b": date(2026, 10, 9), "c": date(2026, 10, 2)}

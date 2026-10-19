@@ -21,7 +21,7 @@ from agent_relances.models import (
     ReplyStatus, Tone, client_key,
 )
 from agent_relances.outbox import reference, save_plan_eml
-from agent_relances.plans import cancel_plan, installment_reminder_draft, refresh_plans
+from agent_relances.plans import cancel_plan, installment_reminder_draft, merged_last_contacts, refresh_plans
 from agent_relances.prepare import prepare_today, validate_reminder
 from agent_relances.replies.process import (
     attach_reply, confirm_reply, dismiss_reply, process_replies, record_agreement,
@@ -542,22 +542,16 @@ def render_replies_page() -> None:
 # --- Échéanciers ---
 
 
-def _last_contact(key: str, reminders: ReminderStore, recovery_: RecoveryStore) -> date | None:
-    dates = [d for plan in recovery_.list_plans() if plan.client_key == key
-             for items in recovery_.installment_reminders(plan.id).values() for _, d in items]
-    validated = reminders.last_contacts().get(key)
-    return max(dates + ([validated] if validated else []), default=None)
-
-
 def _due_installments(reminders: ReminderStore, recovery_: RecoveryStore, on: date) -> list[tuple[Plan, InstallmentDue]]:
     """Relances de mensualités dues : une seule par client (la plus ancienne), hors clients en pause."""
     holds = recovery_.active_holds(on)
+    last_contacts = merged_last_contacts(reminders, recovery_)
     result = []
     for plan in recovery_.list_plans([PlanStatus.ACTIVE]):
         if plan.client_key in holds:
             continue
-        dues = installment_steps(plan, recovery_.installment_reminders(plan.id),
-                                 _last_contact(plan.client_key, reminders, recovery_), on)
+        dues = installment_steps(plan, recovery_.installment_reminders(plan.id), last_contacts.get(plan.client_key),
+                                 on)
         if dues:
             result.append((plan, min(dues, key=lambda d: d.number)))
     return result

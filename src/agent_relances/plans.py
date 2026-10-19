@@ -8,6 +8,16 @@ from agent_relances.outbox import reference, with_reference
 from agent_relances.rules.installments import InstallmentDue
 from agent_relances.sources import InvoiceSource
 from agent_relances.storage.recovery import RecoveryStore
+from agent_relances.storage.repository import ReminderStore
+
+
+def merged_last_contacts(reminders: ReminderStore, recovery: RecoveryStore) -> dict[str, date]:
+    """Dernier contact par client : relance validée ou relance de mensualité validée, la plus récente. Sert au délai
+    minimal de 7 jours entre deux relances d'un même client, quel que soit leur type."""
+    merged = dict(reminders.last_contacts())
+    for key, when in recovery.last_installment_contacts().items():
+        merged[key] = max(when, merged[key]) if key in merged else when
+    return merged
 
 
 def refresh_plans(recovery: RecoveryStore, source: InvoiceSource, today: date) -> list[str]:

@@ -188,3 +188,17 @@ def test_invoices_of_a_plan_settled_by_installments_never_return_to_reminders(tm
     assert invoice_id in source.unpaid_ids()                                   # pas encore marquée payée
     result = prepare_today(source, store, None, COMPANY, TODAY, recovery=recovery)
     assert result.prepared == [] and result.escalated == []
+
+
+def test_installment_reminder_counts_for_the_seven_day_gap(tmp_path):
+    source, store, repo, _ = setup(tmp_path)
+    recovery = RecoveryStore(store._conn)
+    other = repo.add(issued("AL-2026-090", amount="300.00", due=date(2026, 8, 1)), "b.pdf")
+    plan_id = recovery.create_plan("hotel des canuts", [other], Decimal("300.00"),
+                                   [Decimal("150.00"), Decimal("150.00")], date(2026, 8, 1))
+    recovery.activate_plan(plan_id, date(2026, 8, 1))
+    recovery.record_installment_reminder(plan_id, 1, 1, TODAY - timedelta(days=3), None)
+    assert prepare_today(source, store, None, COMPANY, TODAY, recovery=recovery).prepared == []
+    later = TODAY + timedelta(days=4)                                        # 7 jours après la relance de mensualité
+    [prepared] = prepare_today(source, store, None, COMPANY, later, recovery=recovery).prepared
+    assert [i.number for i in prepared.due.invoices] == ["AL-2026-101"]

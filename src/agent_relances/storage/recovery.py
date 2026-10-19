@@ -296,6 +296,14 @@ class RecoveryStore:
             result.setdefault(row["number"], []).append((row["stage"], date.fromisoformat(row["decided_on"])))
         return result
 
+    def last_installment_contacts(self) -> dict[str, date]:
+        """Client -> date de la dernière relance de mensualité validée (tous ses échéanciers confondus)."""
+        rows = self._conn.execute(
+            "SELECT p.client_key, MAX(ir.decided_on) AS last FROM installment_reminders ir"
+            " JOIN plans p ON p.id = ir.plan_id GROUP BY p.client_key"
+        )
+        return {row["client_key"]: date.fromisoformat(row["last"]) for row in rows}
+
     # --- Contentieux ---
 
     def add_dispute(self, client_key_: str, folder: str, total_due: Decimal, today: date) -> int:

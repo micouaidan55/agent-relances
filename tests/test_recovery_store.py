@@ -251,3 +251,13 @@ def test_active_plan_with_a_received_installment_cannot_be_cancelled(store):
     other = store.create_plan("atelier", [2], Decimal("500"), [Decimal("250")] * 2, TODAY)
     store.activate_plan(other, TODAY)
     assert store.set_plan_status(other, PlanStatus.CANCELLED, TODAY) is True   # rien reçu : annulable
+
+
+def test_last_installment_contacts_per_client(store):
+    first = store.create_plan("hotel-canuts", [1], Decimal("500"), [Decimal("250")] * 2, TODAY)
+    store.record_installment_reminder(first, 1, 1, date(2026, 11, 20), None)
+    store.record_installment_reminder(first, 1, 2, date(2026, 12, 2), None)
+    store.set_plan_status(first, PlanStatus.CANCELLED, TODAY)
+    second = store.create_plan("hotel-canuts", [2], Decimal("500"), [Decimal("250")] * 2, TODAY)
+    store.record_installment_reminder(second, 1, 1, date(2026, 11, 25), None)
+    assert store.last_installment_contacts() == {"hotel-canuts": date(2026, 12, 2)}
