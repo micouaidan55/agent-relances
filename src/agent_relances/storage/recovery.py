@@ -62,6 +62,15 @@ class RecoveryStore:
         self._conn.commit()
         return cursor.rowcount == 1
 
+    def reopen_reply(self, reply_id: int) -> bool:
+        """Annule une application qui a échoué : « appliquée » redevient « à traiter » (seulement depuis « appliquée »)."""
+        cursor = self._conn.execute(
+            "UPDATE replies SET status = ? WHERE id = ? AND status = ?",
+            (ReplyStatus.TO_REVIEW.value, reply_id, ReplyStatus.APPLIED.value),
+        )
+        self._conn.commit()
+        return cursor.rowcount == 1
+
     @staticmethod
     def _reply(row: sqlite3.Row) -> dict:
         reply = dict(row)

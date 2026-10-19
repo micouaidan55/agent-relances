@@ -46,6 +46,18 @@ class InvoiceSource:
             ))
         return result
 
+    def unpaid_of(self, client_key_: str, today: date) -> list[OverdueInvoice]:
+        """Toutes les factures impayées d'un client, échues ou non (`days_late` ≤ 0 si pas encore échue)."""
+        wanted = client_key(client_key_)
+        return [
+            OverdueInvoice(invoice_id=stored.id, number=stored.invoice.number,
+                           customer=(stored.invoice.customer or "").strip(), amount=stored.invoice.amount_incl_tax,
+                           issue_date=stored.invoice.issue_date, due_date=stored.invoice.due_date,
+                           days_late=(today - stored.invoice.due_date).days)
+            for stored in self._repo.list_unpaid(Direction.ISSUED)
+            if stored.invoice.due_date is not None and client_key(stored.invoice.customer or "") == wanted
+        ]
+
     def unpaid_ids(self) -> set[int]:
         return {stored.id for stored in self._repo.list_unpaid(Direction.ISSUED)}
 
