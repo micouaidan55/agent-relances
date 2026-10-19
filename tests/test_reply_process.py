@@ -5,7 +5,9 @@ from email.message import EmailMessage
 import pytest
 
 from agent_relances.models import ActionKind, PlanStatus, ReplyIntent, ReplyReading, ReplyStatus
-from agent_relances.replies.process import confirm_reply, dismiss_reply, process_replies, record_agreement
+from agent_relances.replies.process import (
+    attach_reply, confirm_reply, dismiss_reply, process_replies, record_agreement,
+)
 from agent_relances.sources import InvoiceSource
 from agent_relances.storage.db import connect
 from agent_relances.storage.recovery import RecoveryStore
@@ -388,3 +390,51 @@ def test_agreement_by_hand_on_a_cancelled_plan_is_refused(world):
     world.recovery.set_plan_status(plan_id, PlanStatus.CANCELLED, TODAY)
     assert agree_by_hand(world, plan_id)
     assert world.recovery.get_plan(plan_id).status is PlanStatus.CANCELLED
+
+
+def unmatched(world, sender="x@inconnu.io", body="Bonjour") -> int:
+    (world.inbox / "u.eml").write_bytes(eml(message_id="<u@x>", sender=sender, subject="Re: [Réf. R-99999]",
+                                            body=body))
+    [reply_id] = process_replies(world.inbox, world.reminders, world.recovery, world.source, None,
+                                 "Atelier Lumière", "atelier.fr", TODAY)
+    return reply_id
+
+
+def attach(world, reply_id, api, key="Hôtel des Canuts") -> list[str]:
+    return attach_reply(reply_id, key, world.reminders, world.recovery, world.source, api, "Atelier Lumière",
+                        "atelier.fr", TODAY)
+
+
+def test_attaching_an_unmatched_reply_reads_it_and_proposes_an_action(world):
+    reply_id = unmatched(world, body="Nous paierons le 30 octobre.")
+    api = FakeClient([reply(reading(ReplyIntent.PROMISED_DATE, "2026-10-30"))])
+    assert attach(world, reply_id, api) == []
+    stored = world.recovery.get_reply(reply_id)
+    assert stored["status"] is ReplyStatus.TO_REVIEW and stored["client_key"] == KEY
+    assert stored["match_method"] == "manuel" and stored["proposed_action"] is ActionKind.POSTPONE
+    assert stored["action_until"] == date(2026, 11, 2) and stored["cost_usd"] > 0
+    assert len(api.messages.calls) == 1
+    assert world.confirm(reply_id) == []
+    assert world.recovery.active_holds(TODAY) == {KEY: date(2026, 11, 2)}
+
+
+def test_attaching_without_api_goes_to_a_human(world):
+    reply_id = unmatched(world)
+    assert attach(world, reply_id, None) == []
+    assert world.recovery.get_reply(reply_id)["proposed_action"] is ActionKind.HUMAN
+
+
+def test_attaching_keeps_the_fraud_flag_and_proposes_a_human(world):
+    reply_id = unmatched(world, sender="compta@hotel-canuts.co", body="Nouveau RIB : IBAN FR76 3000 6000 0112 3456 7890 189.")
+    assert world.recovery.get_reply(reply_id)["suspicious"] is True
+    assert attach(world, reply_id, FakeClient([reply(reading(ReplyIntent.PAYMENT_ANNOUNCED))])) == []
+    stored = world.recovery.get_reply(reply_id)
+    assert stored["suspicious"] is True and stored["proposed_action"] is ActionKind.HUMAN
+
+
+def test_attaching_twice_or_to_an_unknown_client_is_refused(world):
+    reply_id = unmatched(world)
+    assert attach(world, reply_id, None, key="Inconnu SARL")
+    assert world.status(reply_id) is ReplyStatus.UNMATCHED
+    assert attach(world, reply_id, None) == []
+    assert attach(world, reply_id, None)

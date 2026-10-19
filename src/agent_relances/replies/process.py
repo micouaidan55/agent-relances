@@ -1,11 +1,12 @@
 """Traitement des réponses des clients : comprendre et proposer d'abord, appliquer seulement après confirmation humaine."""
 
 import logging
-from datetime import date
+from datetime import date, datetime
 from decimal import ROUND_DOWN, Decimal
 from pathlib import Path
 
 import anthropic
+from agent_emails.models import Email
 
 from agent_relances.drafting.llm import StepError
 from agent_relances.drafting.plans import CONFIRMATION_SUFFIX, confirmation_draft, deposit_plan_draft, proposal_draft
@@ -72,6 +73,32 @@ def _analyse(email, key: str, suspicious: bool, recovery: RecoveryStore, source:
                 requested_installments=reading.requested_installments, summary=reading.summary,
                 suspicious=suspicious, proposed_action=action.kind, action_until=action.until,
                 status=ReplyStatus.TO_REVIEW, cost_usd=usage.cost_usd)
+
+
+def attach_reply(reply_id: int, key: str, reminders: ReminderStore, recovery: RecoveryStore, source: InvoiceSource,
+                 api, company: str, company_domain: str, today: date) -> list[str]:
+    """« Rattacher à… » : l'humain choisit le client d'une réponse non rattachée. Elle est relue (si une clé d'API est
+    présente), recontrôlée pour la fraude et reçoit son action proposée, puis passe « à traiter ». Rien n'est
+    appliqué. Renvoie les erreurs (vide si succès)."""
+    stored = recovery.get_reply(reply_id)
+    if stored is None or stored["status"] is not ReplyStatus.UNMATCHED:
+        return ["Cette réponse n'est plus à rattacher."]
+    card = reminders.get_client(key)
+    if card is None:
+        return ["Fiche client introuvable."]
+    email = Email(message_id=stored["message_id"], sender_address=stored["sender"], subject=stored["subject"],
+                  received_at=datetime.fromisoformat(stored["received_at"]), body=stored["body"])
+    # Le drapeau enregistré à la réception (qui voyait les liens et l'adresse de réponse) est conservé.
+    suspicious = stored["suspicious"] or reply_is_suspicious(email, [c.email for c in reminders.list_clients()],
+                                                             company_domain)
+    fields = _analyse(email, card.key, suspicious, recovery, source, api, company, today)
+    del fields["status"]
+    if not recovery.attach_reply(reply_id, card.key, **fields):
+        return ["Cette réponse vient d'être rattachée ou traitée."]
+    reminders.log(None, "reponse_rattachee", {"reponse": reply_id, "client": card.key,
+                                              "action": fields["proposed_action"].value})
+    log.info("Réponse %d rattachée à %s : %s", reply_id, card.key, fields["proposed_action"].value)
+    return []
 
 
 def _read(api, email, company: str, today: date) -> tuple[ReplyReading | None, Usage]:

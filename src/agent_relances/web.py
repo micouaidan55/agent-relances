@@ -23,7 +23,9 @@ from agent_relances.models import (
 from agent_relances.outbox import reference, save_plan_eml
 from agent_relances.plans import installment_reminder_draft, refresh_plans
 from agent_relances.prepare import prepare_today, validate_reminder
-from agent_relances.replies.process import confirm_reply, dismiss_reply, process_replies, record_agreement
+from agent_relances.replies.process import (
+    attach_reply, confirm_reply, dismiss_reply, process_replies, record_agreement,
+)
 from agent_relances.rules.installments import InstallmentDue, dispute_due, installment_steps, max_installments
 from agent_relances.rules.profile import client_profile
 from agent_relances.rules.schedule import UNNAMED_CLIENT
@@ -478,6 +480,21 @@ def _render_unmatched(reply: dict, reminders: ReminderStore, recovery_: Recovery
                        icon=":material/warning:")
         with st.expander("Lire le message"):
             st.text(reply["body"])
+        cards = {c.name: c.key for c in reminders.list_clients()}
+        if not cards:
+            st.caption("Aucune fiche client : crée la fiche dans la page Clients pour rattacher cette réponse.")
+            return
+        row = st.container(horizontal=True, vertical_alignment="bottom")
+        name = row.selectbox("Rattacher à…", list(cards), key=f"rattacher-client-{reply['id']}")
+        if row.button("Rattacher", key=f"rattacher-{reply['id']}",
+                      help="La réponse est relue pour ce client et reçoit une action proposée, à confirmer."):
+            errors = attach_reply(reply["id"], cards[name], reminders, recovery_, source, api, company(),
+                                  company_domain(), today())
+            if errors:
+                st.error("Rattachement refusé : " + " ; ".join(md_escape(e) for e in errors))
+            else:
+                st.session_state["flash"] = ("success", f"Réponse rattachée à {md_escape(name)} : à traiter.")
+                st.rerun()
 
 
 def render_replies_page() -> None:

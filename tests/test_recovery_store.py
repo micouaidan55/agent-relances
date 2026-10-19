@@ -224,3 +224,19 @@ def test_list_active_holds_gives_each_hold_with_its_id(store):
     [hold] = store.list_active_holds(TODAY)
     assert hold == {"id": report, "client_key": "hotel-canuts", "kind": "report", "until": date(2026, 10, 23),
                     "reason": "paiement annoncé", "created_on": TODAY}
+
+
+def test_attach_reply_only_from_unmatched_and_only_once(store):
+    reply_id = add_reply(store, client_key=None, status=ReplyStatus.UNMATCHED, proposed_action=ActionKind.NONE,
+                         cost_usd=0.0)
+    fields = dict(intent=ReplyIntent.DISPUTE, promised_date=None, requested_installments=None, summary="Conteste.",
+                  suspicious=False, proposed_action=ActionKind.SUSPEND, action_until=None, cost_usd=0.003)
+    assert store.attach_reply(reply_id, "Hôtel des Canuts", **fields) is True
+    reply = store.get_reply(reply_id)
+    assert reply["client_key"] == "hotel des canuts" and reply["match_method"] == "manuel"
+    assert reply["status"] is ReplyStatus.TO_REVIEW and reply["proposed_action"] is ActionKind.SUSPEND
+    assert reply["intent"] is ReplyIntent.DISPUTE and reply["cost_usd"] == pytest.approx(0.003)
+    assert store.attach_reply(reply_id, "Autre client", **fields) is False
+    assert store.get_reply(reply_id)["client_key"] == "hotel des canuts"
+    matched = add_reply(store, message_id="<m2@x>")
+    assert store.attach_reply(matched, "Autre client", **fields) is False

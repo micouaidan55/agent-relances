@@ -72,6 +72,24 @@ class RecoveryStore:
         self._conn.commit()
         return cursor.rowcount == 1
 
+    def attach_reply(
+        self, reply_id: int, client_key_: str, *, intent: ReplyIntent, promised_date: date | None,
+        requested_installments: int | None, summary: str, suspicious: bool, proposed_action: ActionKind,
+        action_until: date | None, cost_usd: float,
+    ) -> bool:
+        """Rattachement à la main : une réponse « non rattachée » devient « à traiter » pour ce client, avec sa
+        nouvelle lecture et son action proposée. Atomique : seule une réponse encore non rattachée change."""
+        cursor = self._conn.execute(
+            "UPDATE replies SET client_key = ?, match_method = 'manuel', intent = ?, promised_date = ?,"
+            " requested_installments = ?, summary = ?, suspicious = ?, proposed_action = ?, action_until = ?,"
+            " cost_usd = cost_usd + ?, status = ? WHERE id = ? AND status = ?",
+            (client_key_fn(client_key_), intent.value, _iso(promised_date), requested_installments, summary,
+             int(suspicious), proposed_action.value, _iso(action_until), cost_usd, ReplyStatus.TO_REVIEW.value,
+             reply_id, ReplyStatus.UNMATCHED.value),
+        )
+        self._conn.commit()
+        return cursor.rowcount == 1
+
     @staticmethod
     def _reply(row: sqlite3.Row) -> dict:
         reply = dict(row)

@@ -442,3 +442,15 @@ def test_dispute_error_is_shown_on_the_humans_page(env, recovery, monkeypatch):
     at.button(key="ouvrir-contentieux").click().run()
     assert any(e.value == md_escape("Refus **précis**") for e in at.error)
     assert recovery.list_disputes() == []
+
+
+def test_attaching_an_unmatched_reply_to_a_client(env, recovery):
+    reply_id = add_unmatched(recovery)
+    at = run_app("app_pages/reponses.py")
+    at.selectbox(key=f"rattacher-client-{reply_id}").select("Hôtel des Canuts").run()
+    at.button(key=f"rattacher-{reply_id}").click().run()
+    assert not at.exception and not at.error
+    stored = recovery.get_reply(reply_id)
+    assert stored["client_key"] == KEY and stored["status"] is ReplyStatus.TO_REVIEW
+    assert stored["proposed_action"] is ActionKind.HUMAN                    # sans clé d'API : un humain
+    assert any(b.key == f"confirmer-{reply_id}" for b in at.button)
