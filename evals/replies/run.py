@@ -1,4 +1,4 @@
-"""Évalue la compréhension des réponses de clients sur ~45 cas. ATTENTION : appelle l'API Claude (payant).
+"""Évalue la compréhension des réponses de clients sur ~48 cas. ATTENTION : appelle l'API Claude (payant).
 
 Seuls l'intention, la date et le nombre de mensualités viennent du modèle. Le rattachement (`match_reply`), la
 détection de fraude (`reply_is_suspicious`) et l'action proposée (`propose_action`) sont des règles du code : elles
@@ -83,7 +83,7 @@ def evaluate_replies(replies: list[dict], api, model: str, company: str, today: 
         totals["cost"] += usage.cost_usd
         match = match_reply(email, reminders, recovery)
         found = reminders.get_client(match.client_key) if match.client_key else None
-        flagged = reply_is_suspicious(email, [found.email] if found else [], COMPANY_DOMAIN)
+        flagged = reply_is_suspicious(email, [c.email for c in cards.values()], COMPANY_DOMAIN)  # comme process_replies
         if found is None:  # réponse non rattachée : enregistrée sans action (voir process_replies)
             action = ActionKind.NONE
         elif reading is not None:

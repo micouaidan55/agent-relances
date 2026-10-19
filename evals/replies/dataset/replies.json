@@ -1112,6 +1112,30 @@
   },
   {
     "id": "R47",
+    "title": "Non rattachée, domaine sosie",
+    "sender_name": "Paul Girard",
+    "sender_address": "compta@hotel-canut.fr",
+    "reply_to": "",
+    "links": [],
+    "subject": "Re: Relance de paiement [Réf. R-99999]",
+    "body": "Bonjour,\n\nSuite à un changement de banque, merci de régler sur notre nouveau RIB : IBAN FR76 3000 6000 0112 3456 7890 189.\n\nPaul Girard",
+    "expected": {
+      "intent": "autre",
+      "promised_date": null,
+      "installments": null,
+      "client": null,
+      "fraud": true,
+      "accepted_intents": [
+        "autre"
+      ],
+      "action": "sans_objet",
+      "accepted_actions": [
+        "sans_objet"
+      ]
+    }
+  },
+  {
+    "id": "R48",
     "title": "Référence inconnue, adresse connue",
     "sender_name": "Sophie Leroy",
     "sender_address": "sophie.leroy@gmail.com",

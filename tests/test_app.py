@@ -368,3 +368,25 @@ def test_dashboard_shows_plans_and_disputes(env, recovery):
     values = {m.label: m.value for m in at.metric}
     assert values["Échéanciers en cours"] == "1" and values["Reste dû sur échéanciers"] == "1 200,50 €"
     assert values["Contentieux"] == "0"
+
+
+def add_unmatched(recovery, suspicious=False, message_id="<u1@x>", sender="compta@hotel-canuts.co") -> int:
+    return recovery.add_reply(
+        message_id=message_id, client_key=None, reminder_ref=None, match_method="aucune", sender=sender,
+        subject="Re: [Réf. R-99999]", received_at="2026-10-14T09:00:00", body="Nouveau RIB.",
+        intent=ReplyIntent.OTHER, promised_date=None, requested_installments=None,
+        summary="Réponse non rattachée à un client.", suspicious=suspicious, proposed_action=ActionKind.NONE,
+        action_until=None, status=ReplyStatus.UNMATCHED, cost_usd=0.0, today=TODAY)
+
+
+def test_suspicious_unmatched_reply_shows_a_fraud_warning(env, recovery):
+    add_unmatched(recovery, suspicious=True)
+    at = run_app("app_pages/reponses.py")
+    assert any("suspecte" in w.value for w in at.warning)
+    assert any("Non rattachées" in s.value for s in at.subheader)
+
+
+def test_clean_unmatched_reply_has_no_fraud_warning(env, recovery):
+    add_unmatched(recovery)
+    at = run_app("app_pages/reponses.py")
+    assert not any("suspecte" in w.value for w in at.warning)

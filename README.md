@@ -141,7 +141,7 @@ Le contentieux produit un dossier : un PDF de synthèse, les copies des factures
 
 ### La boucle avec agent-emails
 
-Les relances déposées portent `[Réf. R-00042]` (échéanciers : `[Réf. E-00007]`). Quand le client répond, [agent-emails](https://github.com/micouaidan55/agent-emails) reconnaît cette référence et laisse la réponse à agent-relances (statut « À ignorer », aucun appel au modèle). Une fausse référence ne contourne rien : agent-relances refait son propre contrôle de fraude et un humain confirme toute action.
+Les relances déposées portent `[Réf. R-00042]` (échéanciers : `[Réf. E-00007]`). Quand le client répond, [agent-emails](https://github.com/micouaidan55/agent-emails) reconnaît cette référence et laisse la réponse à agent-relances (statut « À ignorer », aucun appel au modèle). Une fausse référence ne contourne rien : agent-emails vérifie d'abord ses signaux de fraude (sans appel au modèle) et bloque un email suspect même s'il porte une référence ; agent-relances refait son propre contrôle sur chaque réponse, rattachée ou non, contre toutes les fiches clients, et un humain confirme toute action.
 
 ### Nouvelles variables d'environnement
 

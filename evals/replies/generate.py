@@ -1,4 +1,4 @@
-"""Génère ~45 réponses de clients et leurs réponses attendues, écrites d'après la spec (jamais d'après le modèle).
+"""Génère ~48 réponses de clients et leurs réponses attendues, écrites d'après la spec (jamais d'après le modèle).
 
 Aujourd'hui vaut TODAY (comme l'évaluation des relances) : une date en toutes lettres a donc une valeur concrète.
 Une date vague (« fin du mois »), absente ou passée est attendue à `null`.
@@ -148,6 +148,9 @@ def build_replies() -> list[dict]:
     b.add("Lien trompeur", 3, "Bonjour,\n\nTélécharger la facture rectifiée.\n\nNadia Benali", "autre", fraud=True, links=[{"text": "www.cabinet-benali.fr/facture", "url": "https://paiement-secure.example/x"}])
     b.add("Messagerie gratuite et nouveau RIB", 2, "Bonjour,\n\nNotre nouveau RIB pour tout avoir sera communiqué par ce message : IBAN FR76 3000 6000 0112 3456 7890 189.\n\nService comptabilité", "autre", fraud=True, sender="comptabilite.galerie.nova@gmail.com", name="Service Comptabilité Galerie Nova")
     b.add("Domaine sosie en anglais", 7, "Hello,\n\nNew bank details for any refund: IBAN FR76 3000 6000 0112 3456 7890 189.\n\nClaire", "autre", fraud=True, sender="compta@librairie-du-parc.com")
+
+    # Réponse non rattachée et frauduleuse : fausse référence, domaine sosie d'un client, nouveau RIB (1)
+    b.add("Non rattachée, domaine sosie", None, "Bonjour,\n\nSuite à un changement de banque, merci de régler sur notre nouveau RIB : IBAN FR76 3000 6000 0112 3456 7890 189.\n\nPaul Girard", "autre", fraud=True, via="inconnu", sender="compta@hotel-canut.fr", name="Paul Girard", subject="Re: Relance de paiement [Réf. R-99999]")
 
     # Rattachement : référence inconnue, retombée sur l'adresse de la fiche (1)
     b.add("Référence inconnue, adresse connue", 6, "Bonjour,\n\nLe virement sera effectué le 20 novembre.\n\nSophie Leroy", "promesse_date", date="2026-11-20", via="reference_inconnue")

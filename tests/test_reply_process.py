@@ -297,3 +297,31 @@ def test_without_api_the_attached_reply_is_stored_for_a_human(world):
     stored = world.recovery.get_reply(ids[0])
     assert stored["status"] is ReplyStatus.TO_REVIEW and stored["proposed_action"] is ActionKind.HUMAN
     assert stored["cost_usd"] == 0
+
+
+def test_unmatched_reply_is_checked_for_fraud_against_every_client_card(world):
+    world.reminders.save_client(client(name="Galerie Nova", email="compta@galerie-nova.fr", contact="Marc"))
+    (world.inbox / "x.eml").write_bytes(eml(sender="compta@galerie-nova.co", subject="Re: Relance [Réf. R-99999]",
+                                            body="Notre nouveau RIB : IBAN FR76 3000 6000 0112 3456 7890 189."))
+    api = FakeClient([])
+    ids = process_replies(world.inbox, world.reminders, world.recovery, world.source, api,
+                          "Atelier Lumière", "atelier.fr", TODAY)
+    stored = world.recovery.get_reply(ids[0])
+    assert stored["status"] is ReplyStatus.UNMATCHED and stored["suspicious"] is True
+    assert api.messages.calls == []
+
+
+def test_clean_unmatched_reply_is_not_flagged(world):
+    (world.inbox / "x.eml").write_bytes(eml(sender="x@inconnu.io", subject="Re: [Réf. R-99999]"))
+    ids = process_replies(world.inbox, world.reminders, world.recovery, world.source, None,
+                          "Atelier Lumière", "atelier.fr", TODAY)
+    assert world.recovery.get_reply(ids[0])["suspicious"] is False
+
+
+def test_matched_reply_from_a_look_alike_of_another_client_is_suspicious(world):
+    world.reminders.save_client(client(name="Galerie Nova", email="compta@galerie-nova.fr", contact="Marc"))
+    world.reminders.add_validated(due_reminder(), ReminderDraft(subject="Relance", body="Bonjour"), TODAY)
+    rid = world.receive(reading(ReplyIntent.PAYMENT_ANNOUNCED), subject="Re: Relance [Réf. R-00001]",
+                        sender="compta@galerie-nova.co", body="Virement parti.")
+    stored = world.recovery.get_reply(rid)
+    assert stored["suspicious"] is True and stored["proposed_action"] is ActionKind.HUMAN

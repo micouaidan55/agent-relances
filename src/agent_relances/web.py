@@ -426,6 +426,18 @@ def _render_reply(reply: dict, reminders: ReminderStore, recovery_: RecoveryStor
             st.rerun()
 
 
+def _render_unmatched(reply: dict, reminders: ReminderStore, recovery_: RecoveryStore, source: InvoiceSource,
+                      api) -> None:
+    with st.container(border=True):
+        st.markdown(f"**{md_escape(reply['sender'])}** · objet : {md_escape(reply['subject'])}")
+        st.caption(f"Reçue le {date_fr(date.fromisoformat(reply['received_at'][:10]))} · non rattachée à un client")
+        if reply["suspicious"]:
+            st.warning("Réponse suspecte (fraude possible) : vérifie l'expéditeur avant toute action.",
+                       icon=":material/warning:")
+        with st.expander("Lire le message"):
+            st.text(reply["body"])
+
+
 def render_replies_page() -> None:
     _flash()
     source = _source_or_error()
@@ -454,9 +466,14 @@ def render_replies_page() -> None:
         st.info("Aucune réponse à traiter. Clique sur « Relever les réponses ».")
     for reply in to_review:
         _render_reply(reply, reminders, recovery_, source, api)
-    others = [r for r in replies if r["status"] is not ReplyStatus.TO_REVIEW]
+    unmatched = [r for r in replies if r["status"] is ReplyStatus.UNMATCHED]
+    if unmatched:
+        st.subheader(f"Non rattachées ({len(unmatched)})")
+    for reply in unmatched:
+        _render_unmatched(reply, reminders, recovery_, source, api)
+    others = [r for r in replies if r["status"] in (ReplyStatus.APPLIED, ReplyStatus.DISMISSED)]
     if others:
-        with st.expander(f"Réponses déjà traitées ou non rattachées ({len(others)})"):
+        with st.expander(f"Réponses déjà traitées ({len(others)})"):
             for reply in others:
                 st.markdown(f"{date_fr(reply['created_on'])} · {REPLY_STATUS_LABELS[reply['status']]} · "
                             f"{md_escape(_client_name(reminders, reply['client_key']))} · {md_escape(reply['summary'])}")

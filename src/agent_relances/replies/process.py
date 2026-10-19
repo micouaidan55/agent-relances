@@ -30,29 +30,21 @@ def process_replies(inbox: Path, reminders: ReminderStore, recovery: RecoverySto
                     company: str, company_domain: str, today: date) -> list[int]:
     """Lit les nouvelles réponses, les rattache, les comprend et enregistre l'action proposée (rien n'est appliqué)."""
     stored_ids: list[int] = []
+    client_emails = [c.email for c in reminders.list_clients()]  # toutes les fiches : les sosies visent les clients
     for email, match in fetch_replies(inbox, reminders, recovery):
         common = dict(
             message_id=email.message_id, client_key=match.client_key, reminder_ref=match.reference,
             match_method=match.method or "aucune", sender=email.sender_address, subject=email.subject,
             received_at=email.received_at.isoformat(), body=email.body, today=today,
         )
+        suspicious = reply_is_suspicious(email, client_emails, company_domain)  # chaque réponse, rattachée ou non
         if match.client_key is None:
             fields = dict(intent=ReplyIntent.OTHER, promised_date=None, requested_installments=None,
-                          summary="Réponse non rattachée à un client.", suspicious=False,
+                          summary="Réponse non rattachée à un client.", suspicious=suspicious,
                           proposed_action=ActionKind.NONE, action_until=None, status=ReplyStatus.UNMATCHED,
                           cost_usd=0.0)
         else:
-            reading, usage = _read(api, email, company, today)
-            card = reminders.get_client(match.client_key)
-            suspicious = reply_is_suspicious(email, [card.email] if card else [], company_domain)
-            unpaid = source.unpaid_of(match.client_key, today)
-            if reading is None:  # « autre » : le code propose toujours un humain
-                reading = ReplyReading(intent=ReplyIntent.OTHER, summary="Réponse non comprise par le modèle.")
-            action = propose_action(reading, suspicious, bool(unpaid), recovery.open_plan_for(match.client_key), today)
-            fields = dict(intent=reading.intent, promised_date=promised_date_of(reading, today),
-                          requested_installments=reading.requested_installments, summary=reading.summary,
-                          suspicious=suspicious, proposed_action=action.kind, action_until=action.until,
-                          status=ReplyStatus.TO_REVIEW, cost_usd=usage.cost_usd)
+            fields = _analyse(email, match.client_key, suspicious, recovery, source, api, company, today)
         try:
             reply_id = recovery.add_reply(**common, **fields)
         except ValueError as error:
@@ -65,6 +57,20 @@ def process_replies(inbox: Path, reminders: ReminderStore, recovery: RecoverySto
                                                     "action": fields["proposed_action"].value})
         stored_ids.append(reply_id)
     return stored_ids
+
+
+def _analyse(email, key: str, suspicious: bool, recovery: RecoveryStore, source: InvoiceSource, api, company: str,
+             today: date) -> dict:
+    """Lecture par le modèle et action proposée par le code pour une réponse rattachée au client `key`."""
+    reading, usage = _read(api, email, company, today)
+    unpaid = source.unpaid_of(key, today)
+    if reading is None:  # « autre » : le code propose toujours un humain
+        reading = ReplyReading(intent=ReplyIntent.OTHER, summary="Réponse non comprise par le modèle.")
+    action = propose_action(reading, suspicious, bool(unpaid), recovery.open_plan_for(key), today)
+    return dict(intent=reading.intent, promised_date=promised_date_of(reading, today),
+                requested_installments=reading.requested_installments, summary=reading.summary,
+                suspicious=suspicious, proposed_action=action.kind, action_until=action.until,
+                status=ReplyStatus.TO_REVIEW, cost_usd=usage.cost_usd)
 
 
 def _read(api, email, company: str, today: date) -> tuple[ReplyReading | None, Usage]:

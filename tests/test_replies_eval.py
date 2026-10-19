@@ -39,6 +39,7 @@ def test_dataset_composition():
     assert set(intents) == {i.value for i in ReplyIntent}
     assert all(count >= 5 for count in intents.values())
     assert sum(r["expected"]["fraud"] for r in replies) >= 3
+    assert any(r["expected"]["fraud"] and r["expected"]["client"] is None for r in replies)  # non rattachée
 
 
 def test_dataset_has_the_trap_cases():
@@ -67,10 +68,9 @@ def test_expected_dates_are_concrete_and_not_in_the_past():
 
 
 def test_the_rule_blocks_every_fraud_and_no_honest_reply():
-    cards = run.build_stores()[0].list_clients()
+    emails = [c.email for c in run.build_stores()[0].list_clients()]  # toutes les fiches, comme process_replies
     for item in build_replies():
-        owner = [c.email for c in cards if c.name == item["expected"]["client"]]
-        suspicious = reply_is_suspicious(run.to_email(item), owner, COMPANY_DOMAIN)
+        suspicious = reply_is_suspicious(run.to_email(item), emails, COMPANY_DOMAIN)
         assert suspicious is item["expected"]["fraud"], item["id"]
 
 
