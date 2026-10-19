@@ -280,3 +280,13 @@ def test_retry_message_names_the_mail_kind():
 def test_deposit_with_invoice_numbers_in_text(tmp_path):
     body = "Factures AL-2026-049 : 3 mensualités de 250,00 €, total 750,00 €."
     deposit_plan_draft(tmp_path, make_plan(), client(), mail(body), invoice_numbers=["AL-2026-049"])
+
+
+def test_single_installment_check_without_count_statement():
+    from agent_relances.models import ReminderDraft
+    draft = ReminderDraft(subject="Rappel", body="Votre mensualité de 250,00 € du 15/11/2026 reste due.")
+    assert check_plan_draft(draft, [D("250.00")], None, [date(2026, 11, 15)], require_count=False) == []
+    assert check_plan_draft(draft, [D("250.00")], None, [date(2026, 11, 15)])  # exigé par défaut
+    wrong = ReminderDraft(subject="Rappel", body=draft.body + " Vous aviez 3 mensualités, soit 4 mois.")
+    problems = check_plan_draft(wrong, [D("250.00")], None, [date(2026, 11, 15)], require_count=False)
+    assert any("faux" in p for p in problems) and any("Durée" in p for p in problems)

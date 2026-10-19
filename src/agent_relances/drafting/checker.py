@@ -172,8 +172,9 @@ def _as_int(token: str) -> int:
 
 def check_plan_draft(draft: ReminderDraft, amounts: list[Decimal], total: Decimal | None,
                      dates: list[date] | None, invoice_numbers: Sequence[str] = (),
-                     requested: int | None = None) -> list[str]:
-    """Montants = exactement les mensualités et le total ; nombre de mensualités annoncé = exact ; dates = exactement
+                     requested: int | None = None, require_count: bool = True) -> list[str]:
+    """`require_count=False` (relance d'une seule mensualité) : l'annonce du nombre n'est pas exigée, mais une
+    annonce fausse reste refusée. Montants = exactement les mensualités et le total ; nombre de mensualités annoncé = exact ; dates = exactement
     celles de l'échéancier, ou aucune. « N mois » n'est admis que pour le nombre de mensualités ou la demande du client."""
     text = f"{draft.subject}\n{draft.body}".translate(_SPACES)
     for number in invoice_numbers:   # les numéros de facture contiennent des chiffres et des « / » : on les retire
@@ -187,7 +188,7 @@ def check_plan_draft(draft: ReminderDraft, amounts: list[Decimal], total: Decima
 
     plain = _plain(text)
     stated = [_as_int(m[1]) for m in _COUNT_STATEMENT.finditer(plain)]
-    if len(amounts) not in stated:
+    if require_count and len(amounts) not in stated:
         problems.append(f"Nombre de mensualités non annoncé : {len(amounts)}")
     problems += [f"Nombre de mensualités faux : {n} au lieu de {len(amounts)}" for n in sorted(set(stated) - {len(amounts)})]
     allowed_months = {len(amounts)} | ({requested} if requested else set())

@@ -1,8 +1,12 @@
 """Règle d'échéancier : calculée et vérifiée uniquement par le code, jamais par le modèle."""
 
 import calendar
+from dataclasses import dataclass
 from datetime import date, timedelta
 from decimal import ROUND_DOWN, Decimal
+
+from agent_relances.models import Plan, PlanStatus, Stage
+from agent_relances.rules.schedule import MIN_GAP_DAYS, StageDelays
 
 MAX_INSTALLMENTS = 4
 MIN_INSTALLMENT = Decimal("100")
@@ -63,3 +67,50 @@ def installment_dates(agreed_on: date, count: int) -> list[date]:
         day = min(first.day, calendar.monthrange(year, month)[1])
         dates.append(date(year, month, day))
     return dates
+
+
+@dataclass(frozen=True)
+class InstallmentDue:
+    plan_id: int
+    number: int
+    amount: Decimal
+    due_date: date
+    stage: Stage
+    days_late: int
+
+
+def installment_steps(
+    plan: Plan, done: dict[int, list[tuple[int, date]]], last_contact: date | None, today: date,
+    delays: StageDelays = StageDelays(),
+) -> list[InstallmentDue]:
+    """Relances de mensualités dues aujourd'hui : un palier à la fois, le suivant seulement une fois le précédent
+    validé et son délai atteint, et pas avant MIN_GAP_DAYS jours après le dernier contact avec le client."""
+    if plan.status is not PlanStatus.ACTIVE:
+        return []
+    if last_contact is not None and (today - last_contact).days < MIN_GAP_DAYS:
+        return []
+    result = []
+    for installment in sorted(plan.installments, key=lambda i: i.number):
+        if installment.received_on is not None or installment.due_date is None:
+            continue
+        days_late = (today - installment.due_date).days
+        last_stage = max((stage for stage, _ in done.get(installment.number, [])), default=0)
+        if last_stage >= Stage.FINAL:
+            continue
+        stage = Stage(last_stage + 1)
+        if days_late >= delays.for_stage(stage):
+            result.append(InstallmentDue(plan.id, installment.number, installment.amount, installment.due_date,
+                                         stage, days_late))
+    return result
+
+
+def dispute_due(plan: Plan, done: dict[int, list[tuple[int, date]]], today: date) -> bool:
+    """Une mensualité non reçue a ses 3 relances validées, la dernière date d'au moins MIN_GAP_DAYS jours."""
+    if plan.status is not PlanStatus.ACTIVE:
+        return False
+    for installment in plan.installments:
+        reminders = done.get(installment.number, [])
+        if installment.received_on is None and {stage for stage, _ in reminders} >= {1, 2, 3}:
+            if (today - max(decided for _, decided in reminders)).days >= MIN_GAP_DAYS:
+                return True
+    return False
