@@ -420,3 +420,25 @@ def test_dispute_suspension_cannot_be_released(env, recovery):
     at = run_app("app_pages/clients.py")
     assert not [b for b in at.button if str(b.key).startswith("lever-pause-")]
     assert any("contentieux" in c.value for c in at.caption)
+
+
+def test_opening_a_dispute_from_the_humans_page(env, recovery):
+    tmp_path, _ = env
+    at = run_app("app_pages/journal_humain.py")
+    at.selectbox(key="contentieux-client").select("Hôtel des Canuts").run()
+    at.button(key="ouvrir-contentieux").click().run()
+    assert not at.exception and not at.error
+    [dispute] = recovery.list_disputes()
+    assert dispute["client_key"] == KEY and Path(dispute["folder"]).is_dir()
+    assert any(dispute["folder"] in c.value for c in at.code)
+    assert not [b for b in at.button if b.key == "ouvrir-contentieux"]     # plus aucun client sans contentieux
+
+
+def test_dispute_error_is_shown_on_the_humans_page(env, recovery, monkeypatch):
+    def refuse(*args, **kwargs):
+        raise ValueError("Refus **précis**")
+    monkeypatch.setattr("agent_relances.web.open_dispute", refuse)
+    at = run_app("app_pages/journal_humain.py")
+    at.button(key="ouvrir-contentieux").click().run()
+    assert any(e.value == md_escape("Refus **précis**") for e in at.error)
+    assert recovery.list_disputes() == []

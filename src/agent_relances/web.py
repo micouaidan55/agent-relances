@@ -388,7 +388,27 @@ def render_validated_page() -> None:
 
 
 def render_humans_page() -> None:
+    _flash()
     _render_list(ReminderStatus.HUMAN, "Aucune facture à traiter par un humain.")
+    source = _source_or_error()
+    if source is not None:
+        _render_dispute_opener(store(), recovery(), source)
+
+
+def _render_dispute_opener(reminders: ReminderStore, recovery_: RecoveryStore, source: InvoiceSource) -> None:
+    """Ouverture d'un contentieux à la main, pour un client qui a des factures impayées et aucun contentieux."""
+    with_dispute = {d["client_key"] for d in recovery_.list_disputes()}
+    candidates = {c.name: c.key for c in reminders.list_clients()
+                  if c.key not in with_dispute and source.unpaid_of(c.key, today())}
+    st.subheader("Ouvrir un contentieux")
+    if not candidates:
+        st.caption("Aucun client avec des factures impayées hors contentieux.")
+        return
+    row = st.container(horizontal=True, vertical_alignment="bottom")
+    name = row.selectbox("Client", list(candidates), key="contentieux-client")
+    if row.button("Ouvrir un contentieux", key="ouvrir-contentieux",
+                  help="Prépare le dossier pour l'avocat (jamais envoyé) et suspend les relances de ce client."):
+        _open_dispute(candidates[name], reminders, recovery_, source)
 
 
 def render_history_page() -> None:
