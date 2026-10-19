@@ -36,9 +36,11 @@ def _human(reason: str) -> ProposedAction:
 
 
 def propose_action(reading: ReplyReading, suspicious: bool, has_unpaid: bool, open_plan: Plan | None,
-                   today: date) -> ProposedAction:
+                   today: date, has_dispute: bool = False) -> ProposedAction:
     if suspicious:
         return _human("Réponse suspecte (fraude possible) : aucune action automatique.")
+    if has_dispute:
+        return _human("Client en contentieux : aucune action automatique, le dossier suit son cours.")
     if not has_unpaid:
         return ProposedAction(ActionKind.NONE, None, None, "Le client n'a plus de facture impayée.")
     intent = reading.intent
@@ -56,6 +58,8 @@ def propose_action(reading: ReplyReading, suspicious: bool, has_unpaid: bool, op
     if intent is ReplyIntent.PLAN_REQUEST:
         if open_plan is not None:
             return _human("Un échéancier est déjà ouvert pour ce client.")
+        if reading.requested_installments == 1:
+            return _human("Paiement demandé en une seule fois : ce n'est pas un échéancier.")
         return ProposedAction(ActionKind.PROPOSE_PLAN, None, reading.requested_installments,
                               "Le client demande à payer en plusieurs fois : proposer un échéancier.")
     if intent is ReplyIntent.PLAN_AGREEMENT:

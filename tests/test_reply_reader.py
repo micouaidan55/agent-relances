@@ -127,3 +127,19 @@ def test_lookalike_of_client_domain_is_suspicious():
 def test_genuine_client_reply_is_not_suspicious():
     assert not reply_is_suspicious(email(), ["Compta@Hotel-Canuts.fr"], "atelier-lumiere.fr")
     assert not reply_is_suspicious(email(), ["compta@hotel-canuts.fr"], None)
+
+
+@pytest.mark.parametrize("intent", list(ReplyIntent))
+def test_client_with_a_dispute_always_goes_to_a_human(intent):
+    r = reading(intent, "2026-10-30", 3)
+    action = propose_action(r, False, True, plan(), TODAY, has_dispute=True)
+    assert action.kind is ActionKind.HUMAN and "contentieux" in action.reason
+
+
+def test_single_installment_request_is_not_a_plan():
+    action = act(reading(ReplyIntent.PLAN_REQUEST, installments=1))
+    assert action.kind is ActionKind.HUMAN
+
+
+def test_plan_request_with_two_installments_is_a_plan():
+    assert act(reading(ReplyIntent.PLAN_REQUEST, installments=2)).kind is ActionKind.PROPOSE_PLAN

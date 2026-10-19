@@ -66,7 +66,8 @@ def _analyse(email, key: str, suspicious: bool, recovery: RecoveryStore, source:
     unpaid = source.unpaid_of(key, today)
     if reading is None:  # « autre » : le code propose toujours un humain
         reading = ReplyReading(intent=ReplyIntent.OTHER, summary="Réponse non comprise par le modèle.")
-    action = propose_action(reading, suspicious, bool(unpaid), recovery.open_plan_for(key), today)
+    has_dispute = any(d["client_key"] == key for d in recovery.list_disputes())
+    action = propose_action(reading, suspicious, bool(unpaid), recovery.open_plan_for(key), today, has_dispute)
     return dict(intent=reading.intent, promised_date=promised_date_of(reading, today),
                 requested_installments=reading.requested_installments, summary=reading.summary,
                 suspicious=suspicious, proposed_action=action.kind, action_until=action.until,

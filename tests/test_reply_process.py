@@ -325,3 +325,9 @@ def test_matched_reply_from_a_look_alike_of_another_client_is_suspicious(world):
                         sender="compta@galerie-nova.co", body="Virement parti.")
     stored = world.recovery.get_reply(rid)
     assert stored["suspicious"] is True and stored["proposed_action"] is ActionKind.HUMAN
+
+
+def test_reply_from_a_client_in_dispute_is_proposed_to_a_human(world):
+    world.recovery.add_dispute(KEY, "dossier", D("450.00"), TODAY)
+    rid = world.receive(reading(ReplyIntent.PAYMENT_ANNOUNCED), body="Virement parti.")
+    assert world.recovery.get_reply(rid)["proposed_action"] is ActionKind.HUMAN
