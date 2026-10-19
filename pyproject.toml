@@ -35,5 +35,6 @@ agent-factures = { git = "https://github.com/micouaidan55/agent-factures" }
 [dependency-groups]
 dev = [
     "httpx>=0.28.1",
+    "pypdf>=6.21.1",
     "pytest>=9.1.1",
 ]

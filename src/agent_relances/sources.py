@@ -69,6 +69,15 @@ class InvoiceSource:
             ))
         return result
 
+    def files_of(self, invoice_ids: list[int]) -> dict[int, str]:
+        """Fichier d'origine (`source_file` d'agent-factures) de chaque facture demandée qui existe."""
+        result = {}
+        for invoice_id in invoice_ids:
+            stored = self._repo.get(invoice_id)
+            if stored is not None:
+                result[invoice_id] = stored.source_file
+        return result
+
     def unpaid_ids(self) -> set[int]:
         return {stored.id for stored in self._repo.list_unpaid(Direction.ISSUED)}
 

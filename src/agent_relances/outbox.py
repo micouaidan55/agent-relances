@@ -23,7 +23,8 @@ def with_reference(subject: str, ref: str) -> str:
 
 def _write_eml(outbox: Path, filename: str, marker: str, client: Client, subject: str, body: str) -> str:
     message = EmailMessage()
-    message["To"] = formataddr((client.contact, client.email)) if client.contact else client.email
+    if client.email:  # sans adresse (brouillon à compléter), pas d'en-tête To
+        message["To"] = formataddr((client.contact, client.email)) if client.contact else client.email
     message["Subject"] = subject
     message["Date"] = formatdate(localtime=True)
     message["X-Unsent"] = "1"  # les clients mail ouvrent le fichier comme un brouillon modifiable
