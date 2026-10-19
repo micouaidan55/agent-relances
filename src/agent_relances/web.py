@@ -29,7 +29,7 @@ from agent_relances.rules.profile import client_profile
 from agent_relances.rules.schedule import UNNAMED_CLIENT
 from agent_relances.sources import FacturesSourceError, InvoiceSource
 from agent_relances.storage.db import connect
-from agent_relances.storage.recovery import RecoveryStore
+from agent_relances.storage.recovery import DISPUTE_HOLD_REASON, RecoveryStore
 from agent_relances.storage.repository import ReminderStore, StoredReminder
 
 load_dotenv()
@@ -301,6 +301,7 @@ def render_clients_page() -> None:
         "Factures en retard": counts.get(c.key, 0),
         "Relances validées": validated.get(c.key, 0),
     } for c in clients]), hide_index=True)
+    _render_holds(reminders, recovery())
     history_by_client: dict[str, list[StoredReminder]] = {}
     for reminder in reminders.list_reminders():
         history_by_client.setdefault(reminder.client_key, []).append(reminder)
@@ -314,6 +315,27 @@ def render_clients_page() -> None:
                 numbers = ", ".join(i.number for i in reminder.invoices)
                 st.markdown(f"{when} · palier {int(reminder.stage)} · {STATUS_LABELS[reminder.status]} · "
                             f"{md_escape(numbers)}")
+
+
+def _render_holds(reminders: ReminderStore, recovery_: RecoveryStore) -> None:
+    """Pauses et suspensions en cours ; l'humain peut les lever, sauf la suspension d'un contentieux."""
+    holds = recovery_.list_active_holds(today())
+    if not holds:
+        return
+    st.subheader("Relances en pause")
+    for hold in holds:
+        when = f"reportées jusqu'au {date_fr(hold['until'])}" if hold["until"] else "suspendues sans date de fin"
+        row = st.container(horizontal=True, vertical_alignment="center")
+        row.markdown(f"**{md_escape(_client_name(reminders, hold['client_key']))}** : relances {when} · "
+                     f"{md_escape(hold['reason'])}")
+        if hold["reason"] == DISPUTE_HOLD_REASON:
+            row.caption("Client en contentieux : cette suspension ne se lève pas ici.")
+        elif row.button("Lever la pause", key=f"lever-pause-{hold['id']}"):
+            if recovery_.release_hold(hold["id"], today()):
+                reminders.log(None, "pause_levee", {"pause": hold["id"], "client": hold["client_key"]})
+                st.session_state["flash"] = ("success", f"Pause levée : les relances reprennent pour "
+                                                        f"{md_escape(_client_name(reminders, hold['client_key']))}.")
+            st.rerun()
 
 
 def render_dashboard_page() -> None:

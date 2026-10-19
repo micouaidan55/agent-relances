@@ -403,3 +403,20 @@ def test_client_agreement_by_hand_activates_a_proposed_plan(env, recovery):
     assert plan.status is PlanStatus.ACTIVE and plan.agreed_on == TODAY
     assert (tmp_path / "deposees" / f"echeancier_{plan_id:05d}_confirmation.eml").exists()
     assert not any(b.key == f"accord-plan-{plan_id}" for b in at.button)
+
+
+def test_releasing_a_hold_from_the_clients_page(env, recovery):
+    hold_id = recovery.add_hold(KEY, "suspension", None, "Réponse 1 : contestation du client.", TODAY)
+    at = run_app("app_pages/clients.py")
+    assert any("contestation" in m.value for m in at.markdown)
+    at.button(key=f"lever-pause-{hold_id}").click().run()
+    assert not at.exception
+    assert recovery.active_holds(TODAY) == {}
+    assert not any(b.key == f"lever-pause-{hold_id}" for b in at.button)
+
+
+def test_dispute_suspension_cannot_be_released(env, recovery):
+    recovery.open_dispute_records(KEY, "dossier", Decimal("1200.50"), None, None, TODAY)
+    at = run_app("app_pages/clients.py")
+    assert not [b for b in at.button if str(b.key).startswith("lever-pause-")]
+    assert any("contentieux" in c.value for c in at.caption)

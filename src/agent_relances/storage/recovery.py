@@ -12,6 +12,7 @@ from agent_relances.rules.installments import installment_dates, plan_violations
 
 _OPEN_PLAN = (PlanStatus.PROPOSED.value, PlanStatus.ACTIVE.value)
 _HOLD_KINDS = ("report", "suspension")
+DISPUTE_HOLD_REASON = "contentieux"  # suspension posée par l'ouverture d'un contentieux : jamais levée à la main
 
 
 class RecoveryStore:
@@ -111,6 +112,15 @@ class RecoveryStore:
             else:
                 holds[row["client_key"]] = until
         return holds
+
+    def list_active_holds(self, today: date) -> list[dict]:
+        """Pauses actives, une par ligne avec son identifiant (pour les lever) ; une pause expirée n'y est pas."""
+        rows = self._conn.execute(
+            "SELECT id, client_key, kind, until, reason, created_on FROM holds WHERE released_on IS NULL ORDER BY id"
+        ).fetchall()
+        holds = [{**dict(r), "until": _date(r["until"]), "created_on": date.fromisoformat(r["created_on"])}
+                 for r in rows]
+        return [h for h in holds if h["until"] is None or h["until"] > today]
 
     def release_hold(self, hold_id: int, today: date) -> bool:
         cursor = self._conn.execute(
@@ -282,8 +292,8 @@ class RecoveryStore:
             if any(r["client_key"] == key for r in self._conn.execute("SELECT client_key FROM disputes")):
                 raise ValueError("Un contentieux est déjà ouvert pour ce client.")
             self._conn.execute(
-                "INSERT INTO holds (client_key, kind, until, reason, created_on) VALUES (?, 'suspension', NULL,"
-                " 'contentieux', ?)", (key, today.isoformat()))
+                "INSERT INTO holds (client_key, kind, until, reason, created_on) VALUES (?, 'suspension', NULL, ?, ?)",
+                (key, DISPUTE_HOLD_REASON, today.isoformat()))
             if plan_id is not None and plan_status is not None:
                 allowed = (PlanStatus.ACTIVE.value,) if plan_status is PlanStatus.BROKEN else _OPEN_PLAN
                 cursor = self._conn.execute(

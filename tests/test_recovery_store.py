@@ -214,3 +214,13 @@ def test_add_hold_rejects_report_without_end_and_unknown_kind(store):
     with pytest.raises(ValueError, match="inconnu"):
         store.add_hold("hotel-canuts", "autre", None, "", TODAY)
     assert store.active_holds(TODAY) == {}
+
+
+def test_list_active_holds_gives_each_hold_with_its_id(store):
+    report = store.add_hold("hotel-canuts", "report", TODAY + timedelta(days=7), "paiement annoncé", TODAY)
+    store.add_hold("boulangerie", "report", TODAY, "fini aujourd'hui", TODAY - timedelta(days=7))
+    released = store.add_hold("atelier", "suspension", None, "contestation", TODAY)
+    store.release_hold(released, TODAY)
+    [hold] = store.list_active_holds(TODAY)
+    assert hold == {"id": report, "client_key": "hotel-canuts", "kind": "report", "until": date(2026, 10, 23),
+                    "reason": "paiement annoncé", "created_on": TODAY}
