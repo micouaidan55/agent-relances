@@ -1,0 +1,806 @@
+[
+  {
+    "id": "R01",
+    "title": "Virement parti",
+    "sender_name": "Paul Girard",
+    "sender_address": "compta@hotel-canuts.fr",
+    "reply_to": "",
+    "links": [],
+    "subject": "Re: Relance de paiement [Réf. R-00001]",
+    "body": "Bonjour,\n\nLe virement est parti ce matin, vous devriez le recevoir sous peu.\n\nPaul Girard",
+    "expected": {
+      "intent": "paiement_annonce",
+      "promised_date": null,
+      "installments": null,
+      "client": "Hôtel des Canuts",
+      "fraud": false
+    }
+  },
+  {
+    "id": "R02",
+    "title": "Réglé hier",
+    "sender_name": "Julien Roche",
+    "sender_address": "julien@bistrot-saint-paul.fr",
+    "reply_to": "",
+    "links": [],
+    "subject": "Re: Relance de paiement",
+    "body": "Bonjour,\n\nNous avons réglé cette facture hier par virement.\n\nJulien",
+    "expected": {
+      "intent": "paiement_annonce",
+      "promised_date": null,
+      "installments": null,
+      "client": "Bistrot Saint-Paul",
+      "fraud": false
+    }
+  },
+  {
+    "id": "R03",
+    "title": "Chèque posté",
+    "sender_name": "Marc Petit",
+    "sender_address": "m.petit@galerie-nova.fr",
+    "reply_to": "",
+    "links": [],
+    "subject": "Re: Relance de paiement [Réf. R-00003]",
+    "body": "Bonjour, le chèque a été posté lundi, il devrait vous parvenir cette semaine. Marc Petit",
+    "expected": {
+      "intent": "paiement_annonce",
+      "promised_date": null,
+      "installments": null,
+      "client": "Galerie Nova",
+      "fraud": false
+    }
+  },
+  {
+    "id": "R04",
+    "title": "Fin du mois (vague)",
+    "sender_name": "Nadia Benali",
+    "sender_address": "contact@cabinet-benali.fr",
+    "reply_to": "",
+    "links": [],
+    "subject": "Re: Relance de paiement [Réf. R-00004]",
+    "body": "Bonjour,\n\nJe règle ça fin du mois sans faute.\n\nNadia Benali",
+    "expected": {
+      "intent": "paiement_annonce",
+      "promised_date": null,
+      "installments": null,
+      "client": "Cabinet Benali",
+      "fraud": false
+    }
+  },
+  {
+    "id": "R05",
+    "title": "Dès que possible (vague)",
+    "sender_name": "Élodie Garnier",
+    "sender_address": "e.garnier@maison-garnier.fr",
+    "reply_to": "",
+    "links": [],
+    "subject": "Re: Relance de paiement",
+    "body": "Bonjour, je fais le virement dès que possible, merci de votre patience. E. Garnier",
+    "expected": {
+      "intent": "paiement_annonce",
+      "promised_date": null,
+      "installments": null,
+      "client": "Maison Garnier",
+      "fraud": false
+    }
+  },
+  {
+    "id": "R06",
+    "title": "Paiement en anglais",
+    "sender_name": "Anne Roux",
+    "sender_address": "anne@cafedesarts.fr",
+    "reply_to": "",
+    "links": [],
+    "subject": "Re: Relance de paiement [Réf. R-00006]",
+    "body": "Hello,\n\nI have paid this invoice by bank transfer yesterday, please check your account.\n\nAnne",
+    "expected": {
+      "intent": "paiement_annonce",
+      "promised_date": null,
+      "installments": null,
+      "client": "Café des Arts",
+      "fraud": false
+    }
+  },
+  {
+    "id": "R07",
+    "title": "Paiement en cours",
+    "sender_name": "Claire Martin",
+    "sender_address": "compta@librairie-du-parc.fr",
+    "reply_to": "",
+    "links": [],
+    "subject": "Re: Relance de paiement [Réf. R-00008]",
+    "body": "Bonjour,\n\nLe paiement est en cours de traitement par notre comptabilité.\n\nClaire Martin",
+    "expected": {
+      "intent": "paiement_annonce",
+      "promised_date": null,
+      "installments": null,
+      "client": "Librairie du Parc",
+      "fraud": false
+    }
+  },
+  {
+    "id": "R08",
+    "title": "30 octobre",
+    "sender_name": "Julien Roche",
+    "sender_address": "julien@bistrot-saint-paul.fr",
+    "reply_to": "",
+    "links": [],
+    "subject": "Re: Relance de paiement [Réf. R-00002]",
+    "body": "Bonjour,\n\nJe vous règle le 30 octobre.\n\nJulien Roche",
+    "expected": {
+      "intent": "promesse_date",
+      "promised_date": "2026-10-30",
+      "installments": null,
+      "client": "Bistrot Saint-Paul",
+      "fraud": false
+    }
+  },
+  {
+    "id": "R09",
+    "title": "Date en toutes lettres",
+    "sender_name": "Paul Girard",
+    "sender_address": "compta@hotel-canuts.fr",
+    "reply_to": "",
+    "links": [],
+    "subject": "Re: Relance de paiement [Réf. R-00001]",
+    "body": "Bonjour,\n\nLe paiement sera effectué le trente novembre.\n\nPaul Girard",
+    "expected": {
+      "intent": "promesse_date",
+      "promised_date": "2026-11-30",
+      "installments": null,
+      "client": "Hôtel des Canuts",
+      "fraud": false
+    }
+  },
+  {
+    "id": "R10",
+    "title": "5 novembre",
+    "sender_name": "Marc Petit",
+    "sender_address": "m.petit@galerie-nova.fr",
+    "reply_to": "",
+    "links": [],
+    "subject": "Re: Relance de paiement [Réf. R-00003]",
+    "body": "Bonjour,\n\nVirement prévu le 5 novembre prochain.\n\nMarc Petit",
+    "expected": {
+      "intent": "promesse_date",
+      "promised_date": "2026-11-05",
+      "installments": null,
+      "client": "Galerie Nova",
+      "fraud": false
+    }
+  },
+  {
+    "id": "R11",
+    "title": "Le 30 (mois courant)",
+    "sender_name": "Nadia Benali",
+    "sender_address": "contact@cabinet-benali.fr",
+    "reply_to": "",
+    "links": [],
+    "subject": "Re: Relance de paiement",
+    "body": "Bonjour, nous paierons le 30. Merci de votre compréhension. Nadia Benali",
+    "expected": {
+      "intent": "promesse_date",
+      "promised_date": "2026-10-30",
+      "installments": null,
+      "client": "Cabinet Benali",
+      "fraud": false
+    }
+  },
+  {
+    "id": "R12",
+    "title": "2 novembre 2026",
+    "sender_name": "Élodie Garnier",
+    "sender_address": "e.garnier@maison-garnier.fr",
+    "reply_to": "",
+    "links": [],
+    "subject": "Re: Relance de paiement [Réf. R-00005]",
+    "body": "Bonjour,\n\nLe règlement partira le 2 novembre 2026.\n\nÉlodie Garnier",
+    "expected": {
+      "intent": "promesse_date",
+      "promised_date": "2026-11-02",
+      "installments": null,
+      "client": "Maison Garnier",
+      "fraud": false
+    }
+  },
+  {
+    "id": "R13",
+    "title": "Vendredi 23 octobre",
+    "sender_name": "Anne Roux",
+    "sender_address": "anne@cafedesarts.fr",
+    "reply_to": "",
+    "links": [],
+    "subject": "Re: Relance de paiement [Réf. R-00006]",
+    "body": "Bonjour,\n\nJe vous paie le vendredi 23 octobre.\n\nAnne Roux",
+    "expected": {
+      "intent": "promesse_date",
+      "promised_date": "2026-10-23",
+      "installments": null,
+      "client": "Café des Arts",
+      "fraud": false
+    }
+  },
+  {
+    "id": "R14",
+    "title": "Promesse en anglais",
+    "sender_name": "Sophie Leroy",
+    "sender_address": "sophie.leroy@gmail.com",
+    "reply_to": "",
+    "links": [],
+    "subject": "Re: Relance de paiement [Réf. R-00007]",
+    "body": "Hello,\n\nWe will pay on November 12th.\n\nSophie Leroy",
+    "expected": {
+      "intent": "promesse_date",
+      "promised_date": "2026-11-12",
+      "installments": null,
+      "client": "Sophie Leroy",
+      "fraud": false
+    }
+  },
+  {
+    "id": "R15",
+    "title": "Date passée",
+    "sender_name": "Claire Martin",
+    "sender_address": "compta@librairie-du-parc.fr",
+    "reply_to": "",
+    "links": [],
+    "subject": "Re: Relance de paiement [Réf. R-00008]",
+    "body": "Bonjour,\n\nJe vous règle le 3 octobre au plus tard.\n\nClaire Martin",
+    "expected": {
+      "intent": "promesse_date",
+      "promised_date": null,
+      "installments": null,
+      "client": "Librairie du Parc",
+      "fraud": false
+    }
+  },
+  {
+    "id": "R16",
+    "title": "15 novembre",
+    "sender_name": "Service comptabilité",
+    "sender_address": "comptabilite@groupe-hotelier.fr",
+    "reply_to": "",
+    "links": [],
+    "subject": "Re: Relance de paiement [Réf. R-00001]",
+    "body": "Bonjour,\n\nLe paiement interviendra le 15 novembre.\n\nPaul Girard",
+    "expected": {
+      "intent": "promesse_date",
+      "promised_date": "2026-11-15",
+      "installments": null,
+      "client": "Hôtel des Canuts",
+      "fraud": false
+    }
+  },
+  {
+    "id": "R17",
+    "title": "Échéancier demandé en 6 fois",
+    "sender_name": "Marc Petit",
+    "sender_address": "m.petit@galerie-nova.fr",
+    "reply_to": "",
+    "links": [],
+    "subject": "Re: Relance de paiement [Réf. R-00003]",
+    "body": "Bonjour,\n\nPourrions-nous régler cette facture en 6 fois ?\n\nMarc Petit",
+    "expected": {
+      "intent": "demande_echeancier",
+      "promised_date": null,
+      "installments": 6,
+      "client": "Galerie Nova",
+      "fraud": false
+    }
+  },
+  {
+    "id": "R18",
+    "title": "Trois mensualités",
+    "sender_name": "Nadia Benali",
+    "sender_address": "contact@cabinet-benali.fr",
+    "reply_to": "",
+    "links": [],
+    "subject": "Re: Relance de paiement [Réf. R-00004]",
+    "body": "Bonjour,\n\nJe souhaiterais régler en trois mensualités.\n\nNadia Benali",
+    "expected": {
+      "intent": "demande_echeancier",
+      "promised_date": null,
+      "installments": 3,
+      "client": "Cabinet Benali",
+      "fraud": false
+    }
+  },
+  {
+    "id": "R19",
+    "title": "Plusieurs mois, sans nombre",
+    "sender_name": "Élodie Garnier",
+    "sender_address": "e.garnier@maison-garnier.fr",
+    "reply_to": "",
+    "links": [],
+    "subject": "Re: Relance de paiement",
+    "body": "Bonjour,\n\nSerait-il possible d'étaler le paiement sur plusieurs mois ?\n\nÉlodie Garnier",
+    "expected": {
+      "intent": "demande_echeancier",
+      "promised_date": null,
+      "installments": null,
+      "client": "Maison Garnier",
+      "fraud": false
+    }
+  },
+  {
+    "id": "R20",
+    "title": "Échéancier en anglais",
+    "sender_name": "Anne Roux",
+    "sender_address": "anne@cafedesarts.fr",
+    "reply_to": "",
+    "links": [],
+    "subject": "Re: Relance de paiement [Réf. R-00006]",
+    "body": "Hello,\n\nCan we pay in 4 instalments?\n\nAnne",
+    "expected": {
+      "intent": "demande_echeancier",
+      "promised_date": null,
+      "installments": 4,
+      "client": "Café des Arts",
+      "fraud": false
+    }
+  },
+  {
+    "id": "R21",
+    "title": "Deux fois",
+    "sender_name": "Julien Roche",
+    "sender_address": "julien@bistrot-saint-paul.fr",
+    "reply_to": "",
+    "links": [],
+    "subject": "Re: Relance de paiement [Réf. R-00002]",
+    "body": "Bonjour,\n\nNotre trésorerie est tendue : un paiement en deux fois est-il possible ?\n\nJulien",
+    "expected": {
+      "intent": "demande_echeancier",
+      "promised_date": null,
+      "installments": 2,
+      "client": "Bistrot Saint-Paul",
+      "fraud": false
+    }
+  },
+  {
+    "id": "R22",
+    "title": "Cinq mensualités",
+    "sender_name": "Claire Martin",
+    "sender_address": "compta@librairie-du-parc.fr",
+    "reply_to": "",
+    "links": [],
+    "subject": "Re: Relance de paiement [Réf. R-00008]",
+    "body": "Bonjour,\n\nNous aimerions un échéancier, 5 mensualités si possible.\n\nClaire Martin",
+    "expected": {
+      "intent": "demande_echeancier",
+      "promised_date": null,
+      "installments": 5,
+      "client": "Librairie du Parc",
+      "fraud": false
+    }
+  },
+  {
+    "id": "R23",
+    "title": "En 3 fois",
+    "sender_name": "Sophie Leroy",
+    "sender_address": "sophie.leroy@gmail.com",
+    "reply_to": "",
+    "links": [],
+    "subject": "Re: Relance de paiement",
+    "body": "Bonjour,\n\nPeut-on payer en 3 fois ?\n\nSophie Leroy",
+    "expected": {
+      "intent": "demande_echeancier",
+      "promised_date": null,
+      "installments": 3,
+      "client": "Sophie Leroy",
+      "fraud": false
+    }
+  },
+  {
+    "id": "R24",
+    "title": "Accord simple",
+    "sender_name": "Marc Petit",
+    "sender_address": "m.petit@galerie-nova.fr",
+    "reply_to": "",
+    "links": [],
+    "subject": "Re: Votre échéancier [Réf. E-00003]",
+    "body": "Bonjour,\n\nNous acceptons l'échéancier proposé, merci.\n\nMarc Petit",
+    "expected": {
+      "intent": "accord_echeancier",
+      "promised_date": null,
+      "installments": null,
+      "client": "Galerie Nova",
+      "fraud": false
+    }
+  },
+  {
+    "id": "R25",
+    "title": "Accord trois mensualités",
+    "sender_name": "Nadia Benali",
+    "sender_address": "contact@cabinet-benali.fr",
+    "reply_to": "",
+    "links": [],
+    "subject": "Re: Votre échéancier [Réf. E-00004]",
+    "body": "Bonjour,\n\nD'accord pour les trois mensualités.\n\nNadia Benali",
+    "expected": {
+      "intent": "accord_echeancier",
+      "promised_date": null,
+      "installments": null,
+      "client": "Cabinet Benali",
+      "fraud": false
+    }
+  },
+  {
+    "id": "R26",
+    "title": "Je valide le plan",
+    "sender_name": "Élodie Garnier",
+    "sender_address": "e.garnier@maison-garnier.fr",
+    "reply_to": "",
+    "links": [],
+    "subject": "Re: Votre échéancier [Réf. E-00005]",
+    "body": "Bonjour,\n\nC'est bon pour moi, je valide le plan de paiement.\n\nÉlodie Garnier",
+    "expected": {
+      "intent": "accord_echeancier",
+      "promised_date": null,
+      "installments": null,
+      "client": "Maison Garnier",
+      "fraud": false
+    }
+  },
+  {
+    "id": "R27",
+    "title": "Accord et dates",
+    "sender_name": "Anne Roux",
+    "sender_address": "anne@cafedesarts.fr",
+    "reply_to": "",
+    "links": [],
+    "subject": "Re: Votre échéancier [Réf. E-00006]",
+    "body": "Bonjour,\n\nAccord reçu, nous réglerons chaque mensualité à la date prévue.\n\nAnne Roux",
+    "expected": {
+      "intent": "accord_echeancier",
+      "promised_date": null,
+      "installments": null,
+      "client": "Café des Arts",
+      "fraud": false
+    }
+  },
+  {
+    "id": "R28",
+    "title": "Accord en anglais",
+    "sender_name": "Claire Martin",
+    "sender_address": "compta@librairie-du-parc.fr",
+    "reply_to": "",
+    "links": [],
+    "subject": "Re: Votre échéancier [Réf. E-00008]",
+    "body": "Hello,\n\nWe agree with the payment schedule you proposed.\n\nClaire Martin",
+    "expected": {
+      "intent": "accord_echeancier",
+      "promised_date": null,
+      "installments": null,
+      "client": "Librairie du Parc",
+      "fraud": false
+    }
+  },
+  {
+    "id": "R29",
+    "title": "Accord sans proposition",
+    "sender_name": "Julien Roche",
+    "sender_address": "julien@bistrot-saint-paul.fr",
+    "reply_to": "",
+    "links": [],
+    "subject": "Re: Relance de paiement [Réf. R-00002]",
+    "body": "Bonjour,\n\nOk, d'accord pour votre proposition.\n\nJulien Roche",
+    "expected": {
+      "intent": "accord_echeancier",
+      "promised_date": null,
+      "installments": null,
+      "client": "Bistrot Saint-Paul",
+      "fraud": false
+    }
+  },
+  {
+    "id": "R30",
+    "title": "Marchandise jamais reçue",
+    "sender_name": "Paul Girard",
+    "sender_address": "compta@hotel-canuts.fr",
+    "reply_to": "",
+    "links": [],
+    "subject": "Re: Relance de paiement [Réf. R-00001]",
+    "body": "Bonjour,\n\nNous n'avons jamais reçu cette marchandise : la facture est contestée.\n\nPaul Girard",
+    "expected": {
+      "intent": "contestation",
+      "promised_date": null,
+      "installments": null,
+      "client": "Hôtel des Canuts",
+      "fraud": false
+    }
+  },
+  {
+    "id": "R31",
+    "title": "Polie mais contestataire",
+    "sender_name": "Julien Roche",
+    "sender_address": "julien@bistrot-saint-paul.fr",
+    "reply_to": "",
+    "links": [],
+    "subject": "Re: Relance de paiement [Réf. R-00002]",
+    "body": "Bonjour,\n\nMerci pour votre message. Nous réglerons volontiers dès que le montant sera rectifié : il comprend des prestations qui n'ont pas été réalisées.\n\nCordialement, Julien Roche",
+    "expected": {
+      "intent": "contestation",
+      "promised_date": null,
+      "installments": null,
+      "client": "Bistrot Saint-Paul",
+      "fraud": false
+    }
+  },
+  {
+    "id": "R32",
+    "title": "Montant différent du devis",
+    "sender_name": "Marc Petit",
+    "sender_address": "m.petit@galerie-nova.fr",
+    "reply_to": "",
+    "links": [],
+    "subject": "Re: Relance de paiement",
+    "body": "Bonjour,\n\nLe montant ne correspond pas au devis signé (1 100 € au lieu de 1 180,40 €).\n\nMarc Petit",
+    "expected": {
+      "intent": "contestation",
+      "promised_date": null,
+      "installments": null,
+      "client": "Galerie Nova",
+      "fraud": false
+    }
+  },
+  {
+    "id": "R33",
+    "title": "TVA appliquée à tort",
+    "sender_name": "Nadia Benali",
+    "sender_address": "contact@cabinet-benali.fr",
+    "reply_to": "",
+    "links": [],
+    "subject": "Re: Relance de paiement [Réf. R-00004]",
+    "body": "Bonjour,\n\nIl y a une erreur sur la facture : la TVA a été appliquée à tort.\n\nNadia Benali",
+    "expected": {
+      "intent": "contestation",
+      "promised_date": null,
+      "installments": null,
+      "client": "Cabinet Benali",
+      "fraud": false
+    }
+  },
+  {
+    "id": "R34",
+    "title": "Contestation en anglais",
+    "sender_name": "Anne Roux",
+    "sender_address": "anne@cafedesarts.fr",
+    "reply_to": "",
+    "links": [],
+    "subject": "Re: Relance de paiement [Réf. R-00006]",
+    "body": "Hello,\n\nWe dispute this invoice: the goods arrived damaged.\n\nAnne",
+    "expected": {
+      "intent": "contestation",
+      "promised_date": null,
+      "installments": null,
+      "client": "Café des Arts",
+      "fraud": false
+    }
+  },
+  {
+    "id": "R35",
+    "title": "Attente d'un avoir",
+    "sender_name": "Sophie Leroy",
+    "sender_address": "sophie.leroy@gmail.com",
+    "reply_to": "",
+    "links": [],
+    "subject": "Re: Relance de paiement [Réf. R-00007]",
+    "body": "Bonjour,\n\nNous attendons un avoir pour la livraison défectueuse avant tout paiement.\n\nSophie Leroy",
+    "expected": {
+      "intent": "contestation",
+      "promised_date": null,
+      "installments": null,
+      "client": "Sophie Leroy",
+      "fraud": false
+    }
+  },
+  {
+    "id": "R36",
+    "title": "Demande de duplicata",
+    "sender_name": "Élodie Garnier",
+    "sender_address": "e.garnier@maison-garnier.fr",
+    "reply_to": "",
+    "links": [],
+    "subject": "Re: Relance de paiement [Réf. R-00005]",
+    "body": "Bonjour,\n\nPouvez-vous me renvoyer un exemplaire de la facture ? Je ne la retrouve pas.\n\nÉlodie Garnier",
+    "expected": {
+      "intent": "autre",
+      "promised_date": null,
+      "installments": null,
+      "client": "Maison Garnier",
+      "fraud": false
+    }
+  },
+  {
+    "id": "R37",
+    "title": "Accusé de réception",
+    "sender_name": "Paul Girard",
+    "sender_address": "compta@hotel-canuts.fr",
+    "reply_to": "",
+    "links": [],
+    "subject": "Re: Relance de paiement [Réf. R-00001]",
+    "body": "Bonjour,\n\nAccusé de réception, nous transmettons à la comptabilité.\n\nPaul Girard",
+    "expected": {
+      "intent": "autre",
+      "promised_date": null,
+      "installments": null,
+      "client": "Hôtel des Canuts",
+      "fraud": false
+    }
+  },
+  {
+    "id": "R38",
+    "title": "Absent jusqu'au 2 novembre",
+    "sender_name": "Claire Martin",
+    "sender_address": "compta@librairie-du-parc.fr",
+    "reply_to": "",
+    "links": [],
+    "subject": "Re: Relance de paiement [Réf. R-00008]",
+    "body": "Bonjour,\n\nJe suis absent jusqu'au 2 novembre, mon collègue vous répondra à mon retour.\n\nClaire Martin",
+    "expected": {
+      "intent": "autre",
+      "promised_date": null,
+      "installments": null,
+      "client": "Librairie du Parc",
+      "fraud": false
+    }
+  },
+  {
+    "id": "R39",
+    "title": "Question sur le SIRET",
+    "sender_name": "Nadia Benali",
+    "sender_address": "contact@cabinet-benali.fr",
+    "reply_to": "",
+    "links": [],
+    "subject": "Re: Relance de paiement",
+    "body": "Bonjour,\n\nQuel est votre numéro de SIRET pour notre dossier fournisseur ?\n\nNadia Benali",
+    "expected": {
+      "intent": "autre",
+      "promised_date": null,
+      "installments": null,
+      "client": "Cabinet Benali",
+      "fraud": false
+    }
+  },
+  {
+    "id": "R40",
+    "title": "Réponse automatique",
+    "sender_name": "Anne Roux",
+    "sender_address": "anne@cafedesarts.fr",
+    "reply_to": "",
+    "links": [],
+    "subject": "Re: Relance de paiement [Réf. R-00006]",
+    "body": "Hello,\n\nI am out of the office and will reply when I am back.\n\nAnne",
+    "expected": {
+      "intent": "autre",
+      "promised_date": null,
+      "installments": null,
+      "client": "Café des Arts",
+      "fraud": false
+    }
+  },
+  {
+    "id": "R41",
+    "title": "Expéditeur inconnu",
+    "sender_name": "Société Propre",
+    "sender_address": "contact@societe-propre.fr",
+    "reply_to": "",
+    "links": [],
+    "subject": "Re: Relance de paiement",
+    "body": "Bonjour,\n\nNous proposons nos services de nettoyage de bureaux.\n\nSociété Propre",
+    "expected": {
+      "intent": "autre",
+      "promised_date": null,
+      "installments": null,
+      "client": null,
+      "fraud": false
+    }
+  },
+  {
+    "id": "R42",
+    "title": "Domaine sosie et nouveau RIB",
+    "sender_name": "Élodie Garnier",
+    "sender_address": "e.garnier@maison-garnier.com",
+    "reply_to": "",
+    "links": [],
+    "subject": "Re: Relance de paiement [Réf. R-00005]",
+    "body": "Bonjour,\n\nSuite à un changement de banque, merci de noter notre nouveau RIB pour tout avoir : IBAN FR76 3000 6000 0112 3456 7890 189.\n\nÉlodie Garnier",
+    "expected": {
+      "intent": "autre",
+      "promised_date": null,
+      "installments": null,
+      "client": "Maison Garnier",
+      "fraud": true
+    }
+  },
+  {
+    "id": "R43",
+    "title": "Réponse détournée et IBAN",
+    "sender_name": "Anne Roux",
+    "sender_address": "anne@cafedesarts.fr",
+    "reply_to": "paiements@anne-cafe.example",
+    "links": [],
+    "subject": "Re: Relance de paiement [Réf. R-00006]",
+    "body": "Bonjour,\n\nPour tout remboursement, utilisez cet IBAN : FR76 1234 5678 9012 3456 7890 123.\n\nAnne Roux",
+    "expected": {
+      "intent": "autre",
+      "promised_date": null,
+      "installments": null,
+      "client": "Café des Arts",
+      "fraud": true
+    }
+  },
+  {
+    "id": "R44",
+    "title": "Lien trompeur",
+    "sender_name": "Nadia Benali",
+    "sender_address": "contact@cabinet-benali.fr",
+    "reply_to": "",
+    "links": [
+      {
+        "text": "www.cabinet-benali.fr/facture",
+        "url": "https://paiement-secure.example/x"
+      }
+    ],
+    "subject": "Re: Relance de paiement [Réf. R-00004]",
+    "body": "Bonjour,\n\nTélécharger la facture rectifiée.\n\nNadia Benali",
+    "expected": {
+      "intent": "autre",
+      "promised_date": null,
+      "installments": null,
+      "client": "Cabinet Benali",
+      "fraud": true
+    }
+  },
+  {
+    "id": "R45",
+    "title": "Messagerie gratuite et nouveau RIB",
+    "sender_name": "Service Comptabilité Galerie Nova",
+    "sender_address": "comptabilite.galerie.nova@gmail.com",
+    "reply_to": "",
+    "links": [],
+    "subject": "Re: Relance de paiement [Réf. R-00003]",
+    "body": "Bonjour,\n\nNotre nouveau RIB pour tout avoir sera communiqué par ce message : IBAN FR76 3000 6000 0112 3456 7890 189.\n\nService comptabilité",
+    "expected": {
+      "intent": "autre",
+      "promised_date": null,
+      "installments": null,
+      "client": "Galerie Nova",
+      "fraud": true
+    }
+  },
+  {
+    "id": "R46",
+    "title": "Domaine sosie en anglais",
+    "sender_name": "Claire Martin",
+    "sender_address": "compta@librairie-du-parc.com",
+    "reply_to": "",
+    "links": [],
+    "subject": "Re: Relance de paiement [Réf. R-00008]",
+    "body": "Hello,\n\nNew bank details for any refund: IBAN FR76 3000 6000 0112 3456 7890 189.\n\nClaire",
+    "expected": {
+      "intent": "autre",
+      "promised_date": null,
+      "installments": null,
+      "client": "Librairie du Parc",
+      "fraud": true
+    }
+  },
+  {
+    "id": "R47",
+    "title": "Référence inconnue, adresse connue",
+    "sender_name": "Sophie Leroy",
+    "sender_address": "sophie.leroy@gmail.com",
+    "reply_to": "",
+    "links": [],
+    "subject": "Re: Relance de paiement [Réf. R-99999]",
+    "body": "Bonjour,\n\nLe virement sera effectué le 20 novembre.\n\nSophie Leroy",
+    "expected": {
+      "intent": "promesse_date",
+      "promised_date": "2026-11-20",
+      "installments": null,
+      "client": "Sophie Leroy",
+      "fraud": false
+    }
+  }
+]
