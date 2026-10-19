@@ -111,7 +111,7 @@ Relancer ne suffit pas : le client répond (« je paie vendredi », « pouvez-vo
 ### Cycle de vie d'une réponse
 
 1. Le client répond à une relance ; la réponse arrive dans la boîte `AGENT_RELANCES_INBOX` (les `.eml` triés par agent-emails).
-2. Elle est rattachée au client par la référence de l'objet (`[Réf. R-00042]`) ou, à défaut, par l'adresse de l'expéditeur.
+2. Elle est rattachée au client par la référence de l'objet (`[Réf. R-00042]`) ou, à défaut, par l'adresse de l'expéditeur. Sinon elle reste « non rattachée » : l'humain la rattache à la main (« Rattacher à… »), elle est alors relue et reçoit son action proposée.
 3. Claude Haiku la lit et en tire une intention : paiement annoncé, date promise, demande d'échéancier, accord, contestation, autre.
 4. Le code propose l'action, après un contrôle de fraude propre à agent-relances (`reply_is_suspicious`) :
    - paiement annoncé : report de 7 jours ;
@@ -119,7 +119,9 @@ Relancer ne suffit pas : le client répond (« je paie vendredi », « pouvez-vo
    - demande d'échéancier : proposition d'échéancier ;
    - accord : activation de l'échéancier proposé (sans proposition en attente, rien n'est activé) ;
    - contestation : suspension des relances et passage à un humain ;
-   - autre ou réponse suspecte : humain, aucune action.
+   - autre, réponse suspecte, demande en une seule fois ou client déjà en contentieux : passage à un humain.
+
+   Règle délibérée : pour un passage à un humain, le bouton s'intitule « Suspendre les relances et traiter moi-même ». Le confirmer suspend les relances du client sans date de fin, pour qu'aucune relance ne parte pendant que l'humain s'en occupe ; il lève la pause lui-même depuis la page Clients (« Lever la pause »). « Classer sans action » laisse les relances suivre leur cours.
 5. L'humain confirme. Une action porte sur toutes les factures impayées du client ; si tout est soldé, la réponse est seulement archivée « sans objet ».
 
 ### La règle d'échéancier
@@ -133,7 +135,7 @@ Le modèle ne calcule jamais rien : la règle est calculée et vérifiée par le
 
 ### Suivi d'un échéancier
 
-*Proposé*, puis *en cours* à l'accord du client (première échéance 30 jours après l'accord, puis chaque mois à la même date), puis *soldé* ou *rompu* ; l'humain peut l'*annuler*. Une mensualité manquée déclenche les relances J+3, J+15 et J+30 depuis son échéance, chacune validée par un humain. Sans paiement, un contentieux est proposé 7 jours après la 3e relance validée.
+*Proposé*, puis *en cours* à l'accord du client (première échéance 30 jours après l'accord, puis chaque mois à la même date), puis *soldé* ou *rompu* ; l'humain peut l'*annuler* tant qu'aucune mensualité n'est reçue (ensuite, il se solde ou passe en contentieux). Un accord donné par téléphone s'enregistre avec « Accord du client reçu » ; si une facture couverte a été payée entre-temps, l'activation est refusée : annuler et reproposer. Soldé par mensualités, l'échéancier rappelle de marquer ses factures payées dans agent-factures ; elles ne reviennent jamais dans les relances. Une mensualité manquée déclenche les relances J+3, J+15 et J+30 depuis son échéance, chacune validée par un humain. Sans paiement, un contentieux est proposé 7 jours après la 3e relance validée.
 
 ### Dossier pour l'avocat
 

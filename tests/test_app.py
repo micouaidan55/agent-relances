@@ -463,3 +463,17 @@ def test_cancelling_a_plan_with_a_received_installment_is_refused(env, recovery)
     at.button(key=f"annuler-plan-{plan_id}").click().run()
     assert any("contentieux" in e.value for e in at.error)
     assert recovery.get_plan(plan_id).status is PlanStatus.ACTIVE
+
+
+def test_human_action_button_says_it_suspends_reminders(env, recovery):
+    reply_id = add_reply(recovery, ReplyIntent.OTHER, ActionKind.HUMAN, None)
+    at = run_app("app_pages/reponses.py")
+    button = at.button(key=f"confirmer-{reply_id}")
+    assert button.label == "Suspendre les relances et traiter moi-même"
+    button.click().run()
+    assert recovery.active_holds(TODAY) == {KEY: None}
+
+
+def test_other_actions_keep_the_generic_confirm_label(env, recovery):
+    reply_id = add_reply(recovery)
+    assert run_app("app_pages/reponses.py").button(key=f"confirmer-{reply_id}").label == "Confirmer l'action"

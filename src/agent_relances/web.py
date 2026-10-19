@@ -61,6 +61,7 @@ PLAN_STATUS_LABELS = {
     PlanStatus.PROPOSED: "Proposé", PlanStatus.ACTIVE: "En cours", PlanStatus.SETTLED: "Soldé",
     PlanStatus.BROKEN: "Rompu", PlanStatus.CANCELLED: "Annulé",
 }
+HUMAN_CONFIRM_LABEL = "Suspendre les relances et traiter moi-même"
 NO_API_KEY_REPLIES = "Clé d'API absente : réponses enregistrées sans lecture automatique, à traiter par un humain."
 NEW_CARD = "Nouvelle fiche"
 SOURCE_LABELS = {DraftSource.MODEL: "Rédigée par Claude, faits vérifiés", DraftSource.FALLBACK: "Modèle de texte de secours"}
@@ -456,7 +457,10 @@ def _render_reply(reply: dict, reminders: ReminderStore, recovery_: RecoveryStor
                 "Nombre de mensualités", min_value=1, max_value=12, key=f"mensualites-{reply_id}",
                 value=_default_installments(total, reply["requested_installments"]),
                 help="4 mensualités au maximum, au moins 100 € chacune ; 2 fois si le total est inférieur à 200 €.")
-        if actions.button("Confirmer l'action", type="primary", key=f"confirmer-{reply_id}"):
+        # Règle délibérée : « à traiter par un humain » suspend les relances du client sans date de fin, jusqu'à ce
+        # que l'humain lève la pause (page Clients) ; le libellé le dit.
+        label = HUMAN_CONFIRM_LABEL if kind is ActionKind.HUMAN else "Confirmer l'action"
+        if actions.button(label, type="primary", key=f"confirmer-{reply_id}"):
             errors = confirm_reply(reply_id, reminders, recovery_, source, outbox(), api, company(), today(),
                                    installments=int(count) if count is not None else None)
             if errors:
