@@ -7,6 +7,7 @@ from pydantic import BaseModel, ValidationError
 from agent_relances.models import Usage
 
 WRITER_MODEL = "claude-sonnet-5"
+READER_MODEL = "claude-haiku-4-5"
 JUDGE_MODEL = "claude-sonnet-5"
 PRICES_PER_MTOK = {"claude-haiku-4-5": (1.00, 5.00), "claude-sonnet-5": (2.00, 10.00)}
 MAX_ATTEMPTS = 2
