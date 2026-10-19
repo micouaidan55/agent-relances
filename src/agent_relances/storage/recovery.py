@@ -224,7 +224,7 @@ class RecoveryStore:
         return cursor.rowcount == 1
 
     def set_plan_status(self, plan_id: int, status: PlanStatus, today: date) -> bool:
-        """Clôture : annulé depuis proposé ou en cours ; soldé ou rompu depuis en cours seulement."""
+        """Clôture : annulé depuis proposé ou en cours (sans mensualité reçue) ; soldé ou rompu depuis en cours."""
         if status is PlanStatus.CANCELLED:
             allowed = _OPEN_PLAN
         elif status in (PlanStatus.SETTLED, PlanStatus.BROKEN):
@@ -232,18 +232,24 @@ class RecoveryStore:
         else:
             return False
         marks = ", ".join("?" for _ in allowed)
+        # Un échéancier en cours dont une mensualité est reçue ne s'annule pas (il se solde ou part en contentieux).
+        received_guard = (" AND NOT (status = ? AND EXISTS (SELECT 1 FROM installments i WHERE i.plan_id = plans.id"
+                          " AND i.received_on IS NOT NULL))") if status is PlanStatus.CANCELLED else ""
         cursor = self._conn.execute(
-            f"UPDATE plans SET status = ?, closed_on = ? WHERE id = ? AND status IN ({marks})",
-            (status.value, today.isoformat(), plan_id, *allowed),
+            f"UPDATE plans SET status = ?, closed_on = ? WHERE id = ? AND status IN ({marks}){received_guard}",
+            (status.value, today.isoformat(), plan_id, *allowed,
+             *((PlanStatus.ACTIVE.value,) if received_guard else ())),
         )
         self._conn.commit()
         return cursor.rowcount == 1
 
     def planned_invoice_ids(self) -> set[int]:
-        """Factures couvertes par un échéancier proposé ou en cours (sorties du cycle de relances)."""
+        """Factures couvertes par un échéancier proposé, en cours ou soldé (sorties du cycle de relances). Une facture
+        d'un échéancier soldé par mensualités reste impayée tant qu'agent-factures ne la marque pas payée : elle ne
+        doit pas revenir dans les relances ; une fois marquée payée, elle n'est de toute façon plus en retard."""
         rows = self._conn.execute(
-            "SELECT pi.invoice_id FROM plan_invoices pi JOIN plans p ON p.id = pi.plan_id WHERE p.status IN (?, ?)",
-            _OPEN_PLAN,
+            "SELECT pi.invoice_id FROM plan_invoices pi JOIN plans p ON p.id = pi.plan_id WHERE p.status IN (?, ?, ?)",
+            (*_OPEN_PLAN, PlanStatus.SETTLED.value),
         )
         return {row["invoice_id"] for row in rows}
 

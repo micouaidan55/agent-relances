@@ -18,9 +18,31 @@ def refresh_plans(recovery: RecoveryStore, source: InvoiceSource, today: date) -
     for plan in recovery.list_plans([PlanStatus.ACTIVE]):
         all_received = all(i.received_on is not None for i in plan.installments)
         all_paid = bool(plan.invoice_ids) and not unpaid.intersection(plan.invoice_ids)
-        if (all_received or all_paid) and recovery.set_plan_status(plan.id, PlanStatus.SETTLED, today):
+        if not (all_received or all_paid) or not recovery.set_plan_status(plan.id, PlanStatus.SETTLED, today):
+            continue
+        still_unpaid = [i for i in plan.invoice_ids if i in unpaid]
+        if still_unpaid:
+            numbers = source.numbers_of(still_unpaid)
+            listed = ", ".join(numbers.get(i, f"n° {i}") for i in still_unpaid)
+            messages.append(f"Échéancier {reference('E', plan.id)} soldé : toutes les mensualités sont reçues. "
+                            f"Marque les factures {listed} comme payées dans agent-factures.")
+        else:
             messages.append(f"Échéancier {reference('E', plan.id)} soldé : plus rien à recouvrer.")
     return messages
+
+
+def cancel_plan(recovery: RecoveryStore, plan_id: int, today: date) -> list[str]:
+    """Annulation par l'humain : un échéancier en cours dont une mensualité est reçue ne s'annule pas (les relances
+    V1 repartiraient sur le montant total) ; il se solde ou passe en contentieux. Renvoie les erreurs."""
+    plan = recovery.get_plan(plan_id)
+    if plan is None or plan.status not in (PlanStatus.PROPOSED, PlanStatus.ACTIVE):
+        return ["Cet échéancier n'est plus proposé ni en cours."]
+    if plan.status is PlanStatus.ACTIVE and any(i.received_on is not None for i in plan.installments):
+        return ["Une mensualité est déjà reçue : l'échéancier ne peut plus être annulé. S'il n'est plus respecté, "
+                "ouvre un contentieux (page « À traiter par un humain » ou proposition après les relances)."]
+    if not recovery.set_plan_status(plan_id, PlanStatus.CANCELLED, today):
+        return ["L'échéancier vient de changer : annulation non faite."]
+    return []
 
 
 _SUBJECTS = {

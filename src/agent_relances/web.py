@@ -21,7 +21,7 @@ from agent_relances.models import (
     ReplyStatus, Tone, client_key,
 )
 from agent_relances.outbox import reference, save_plan_eml
-from agent_relances.plans import installment_reminder_draft, refresh_plans
+from agent_relances.plans import cancel_plan, installment_reminder_draft, refresh_plans
 from agent_relances.prepare import prepare_today, validate_reminder
 from agent_relances.replies.process import (
     attach_reply, confirm_reply, dismiss_reply, process_replies, record_agreement,
@@ -613,9 +613,12 @@ def _render_plan(plan: Plan, reminders: ReminderStore, recovery_: RecoveryStore,
                         st.session_state["flash"] = ("success", " ".join(md_escape(m) for m in closed))
                     st.rerun()
         if actions.button("Annuler l'échéancier", key=f"annuler-plan-{plan.id}"):
-            if recovery_.set_plan_status(plan.id, PlanStatus.CANCELLED, today()):
+            errors = cancel_plan(recovery_, plan.id, today())
+            if errors:
+                st.error(" ; ".join(md_escape(e) for e in errors))
+            else:
                 reminders.log(None, "echeancier_annule", {"echeancier": plan.id})
-            st.rerun()
+                st.rerun()
 
 
 def _validate_installment_reminder(plan: Plan, due: InstallmentDue, client: Client, reminders: ReminderStore,

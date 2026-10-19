@@ -135,7 +135,7 @@ def test_set_plan_status_rules(store):
     assert store.list_plans([PlanStatus.ACTIVE]) == []
 
 
-def test_planned_invoice_ids_ignore_cancelled_plans(store):
+def test_planned_invoice_ids_ignore_cancelled_plans_and_keep_settled_ones(store):
     open_plan = store.create_plan("hotel-canuts", [1, 2], Decimal("500"), [Decimal("250")] * 2, TODAY)
     cancelled = store.create_plan("atelier", [3], Decimal("300"), [Decimal("150")] * 2, TODAY)
     store.set_plan_status(cancelled, PlanStatus.CANCELLED, TODAY)
@@ -143,7 +143,7 @@ def test_planned_invoice_ids_ignore_cancelled_plans(store):
     store.activate_plan(open_plan, TODAY)
     assert store.planned_invoice_ids() == {1, 2}
     store.set_plan_status(open_plan, PlanStatus.SETTLED, TODAY)
-    assert store.planned_invoice_ids() == set()
+    assert store.planned_invoice_ids() == {1, 2}       # soldé par mensualités : jamais de retour aux relances
 
 
 def test_installment_reminders_and_disputes(store):
@@ -240,3 +240,14 @@ def test_attach_reply_only_from_unmatched_and_only_once(store):
     assert store.get_reply(reply_id)["client_key"] == "hotel des canuts"
     matched = add_reply(store, message_id="<m2@x>")
     assert store.attach_reply(matched, "Autre client", **fields) is False
+
+
+def test_active_plan_with_a_received_installment_cannot_be_cancelled(store):
+    plan_id = store.create_plan("hotel-canuts", [1], Decimal("500"), [Decimal("250")] * 2, TODAY)
+    store.activate_plan(plan_id, TODAY)
+    store.mark_received(plan_id, 1, TODAY)
+    assert store.set_plan_status(plan_id, PlanStatus.CANCELLED, TODAY) is False
+    assert store.get_plan(plan_id).status is PlanStatus.ACTIVE
+    other = store.create_plan("atelier", [2], Decimal("500"), [Decimal("250")] * 2, TODAY)
+    store.activate_plan(other, TODAY)
+    assert store.set_plan_status(other, PlanStatus.CANCELLED, TODAY) is True   # rien reçu : annulable

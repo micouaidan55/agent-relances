@@ -5,7 +5,7 @@ import pytest
 
 from agent_relances.drafting.checker import check_plan_draft
 from agent_relances.models import Installment, Plan, PlanStatus, Stage
-from agent_relances.plans import installment_reminder_draft, refresh_plans
+from agent_relances.plans import cancel_plan, installment_reminder_draft, refresh_plans
 from agent_relances.rules.installments import dispute_due, installment_steps
 from agent_relances.storage.db import connect
 from agent_relances.storage.recovery import RecoveryStore
@@ -80,6 +80,9 @@ class Source:
     def unpaid_ids(self):
         return set(self._unpaid)
 
+    def numbers_of(self, invoice_ids):
+        return {i: f"AL-{i}" for i in invoice_ids}
+
 
 @pytest.fixture
 def recovery():
@@ -106,10 +109,11 @@ def test_refresh_settles_when_all_covered_invoices_paid(recovery):
 def test_refresh_settles_when_all_installments_received(recovery):
     plan_id = active_plan(recovery)
     recovery.mark_received(plan_id, 1, date(2026, 11, 15))
-    assert refresh_plans(recovery, Source({1}), date(2026, 11, 16)) == []
+    assert refresh_plans(recovery, Source({1, 2}), date(2026, 11, 16)) == []
     recovery.mark_received(plan_id, 2, date(2026, 12, 15))
-    assert len(refresh_plans(recovery, Source({1}), date(2026, 12, 16))) == 1
+    [message] = refresh_plans(recovery, Source({1, 2}), date(2026, 12, 16))
     assert recovery.get_plan(plan_id).status is PlanStatus.SETTLED
+    assert "AL-1, AL-2" in message and "payées dans agent-factures" in message
 
 
 def test_refresh_ignores_proposed_plans(recovery):
@@ -134,3 +138,18 @@ def test_distinct_tone_per_stage():
         [due] = steps(today=DUE + timedelta(days=30), done={1: [(s, DUE) for s in range(1, stage)]})
         bodies.add(installment_reminder_draft(due, client(), "X").body)
     assert len(bodies) == 3
+
+
+def test_cancel_plan_refuses_an_active_plan_with_a_received_installment(recovery):
+    plan_id = active_plan(recovery)
+    recovery.mark_received(plan_id, 1, date(2026, 11, 15))
+    [error] = cancel_plan(recovery, plan_id, date(2026, 11, 20))
+    assert "contentieux" in error
+    assert recovery.get_plan(plan_id).status is PlanStatus.ACTIVE
+
+
+def test_cancel_plan_cancels_a_proposed_or_untouched_plan(recovery):
+    plan_id = active_plan(recovery)
+    assert cancel_plan(recovery, plan_id, date(2026, 11, 20)) == []
+    assert recovery.get_plan(plan_id).status is PlanStatus.CANCELLED
+    assert cancel_plan(recovery, plan_id, date(2026, 11, 20))                  # déjà clos

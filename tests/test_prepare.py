@@ -171,3 +171,20 @@ def test_prepare_today_excludes_an_invoice_under_a_plan(tmp_path):
                          [Decimal("600.25"), Decimal("600.25")], TODAY)
     result = prepare_today(source, store, None, COMPANY, TODAY, recovery=recovery)
     assert result.prepared == [] and not store.list_reminders({ReminderStatus.TO_VALIDATE})
+
+
+def test_invoices_of_a_plan_settled_by_installments_never_return_to_reminders(tmp_path):
+    from agent_relances.models import PlanStatus
+    from agent_relances.plans import refresh_plans
+    source, store, _, invoice_id = setup(tmp_path)
+    recovery = RecoveryStore(store._conn)
+    plan_id = recovery.create_plan("hotel des canuts", [invoice_id], Decimal("1200.50"),
+                                   [Decimal("600.25"), Decimal("600.25")], date(2026, 8, 1))
+    recovery.activate_plan(plan_id, date(2026, 8, 1))
+    recovery.mark_received(plan_id, 1, date(2026, 8, 31))
+    recovery.mark_received(plan_id, 2, date(2026, 9, 30))
+    assert refresh_plans(recovery, source, TODAY)
+    assert recovery.get_plan(plan_id).status is PlanStatus.SETTLED
+    assert invoice_id in source.unpaid_ids()                                   # pas encore marquée payée
+    result = prepare_today(source, store, None, COMPANY, TODAY, recovery=recovery)
+    assert result.prepared == [] and result.escalated == []

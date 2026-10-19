@@ -454,3 +454,12 @@ def test_attaching_an_unmatched_reply_to_a_client(env, recovery):
     assert stored["client_key"] == KEY and stored["status"] is ReplyStatus.TO_REVIEW
     assert stored["proposed_action"] is ActionKind.HUMAN                    # sans clé d'API : un humain
     assert any(b.key == f"confirmer-{reply_id}" for b in at.button)
+
+
+def test_cancelling_a_plan_with_a_received_installment_is_refused(env, recovery):
+    plan_id = active_plan(recovery)
+    recovery.mark_received(plan_id, 1, TODAY)
+    at = run_app("app_pages/echeanciers.py")
+    at.button(key=f"annuler-plan-{plan_id}").click().run()
+    assert any("contentieux" in e.value for e in at.error)
+    assert recovery.get_plan(plan_id).status is PlanStatus.ACTIVE
