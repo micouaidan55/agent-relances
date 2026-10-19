@@ -78,7 +78,8 @@ def test_perfect_fake_client_scores_100_percent():
     replies = build_replies()
     api = FakeClient(perfect_readings(replies))
     summary = run.evaluate_replies(replies, api, "claude-haiku-4-5", "A", TODAY_DATE, on_line=lambda _: None)
-    for key in ("intent_accuracy", "date_accuracy", "months_accuracy", "matching_accuracy", "fraud_blocked"):
+    for key in ("intent_accuracy", "date_accuracy", "no_date_accuracy", "months_accuracy", "no_months_accuracy",
+                "matching_accuracy", "action_accuracy", "fraud_blocked"):
         assert summary[key] == 1.0, key
     assert summary["false_positives"] == 0 and not summary["stopped"]
     assert summary["replies"] == len(replies) and len(api.messages.calls) == len(replies)
@@ -102,9 +103,79 @@ def test_wrong_date_and_months_are_counted():
     readings[next(i for i, r in enumerate(replies) if r["expected"]["installments"])].parsed_output \
         .requested_installments = 9
     summary = evaluate(replies, readings)
-    assert summary["date_accuracy"] == pytest.approx((len(replies) - 1) / len(replies))
-    assert summary["months_accuracy"] == pytest.approx((len(replies) - 1) / len(replies))
+    dates, months = summary["date_count"][1], summary["months_count"][1]
+    assert dates == sum(1 for r in replies if r["expected"]["promised_date"]) and 0 < dates < len(replies)
+    assert months == sum(1 for r in replies if r["expected"]["installments"]) and 0 < months < len(replies)
+    assert summary["date_accuracy"] == pytest.approx((dates - 1) / dates)
+    assert summary["months_accuracy"] == pytest.approx((months - 1) / months)
+    assert summary["no_date_accuracy"] == 1.0 and summary["no_months_accuracy"] == 1.0
     assert summary["intent_accuracy"] == 1.0
+
+
+def test_invented_date_and_count_are_counted_where_none_is_expected():
+    replies = build_replies()
+    readings = perfect_readings(replies)
+    bare = next(i for i, r in enumerate(replies) if not r["expected"]["promised_date"] and
+                not r["expected"]["installments"])
+    readings[bare].parsed_output.promised_date = "2026-10-31"
+    readings[bare].parsed_output.requested_installments = 2
+    summary = evaluate(replies, readings)
+    assert summary["no_date_count"][0] == summary["no_date_count"][1] - 1
+    assert summary["no_months_count"][0] == summary["no_months_count"][1] - 1
+    assert summary["date_accuracy"] == 1.0 and summary["months_accuracy"] == 1.0
+
+
+def test_accord_without_proposal_has_no_plan_and_expects_a_human():
+    item = next(r for r in build_replies() if r["title"] == "Accord sans proposition")
+    assert item["expected"]["intent"] == "accord_echeancier" and item["expected"]["action"] == "humain"
+    reminders, recovery = run.build_stores()
+    assert recovery.open_plan_for(item["expected"]["client"]) is None
+    other = next(r for r in build_replies() if r["title"] == "Accord simple")
+    assert recovery.open_plan_for(other["expected"]["client"]) is not None
+    assert other["expected"]["action"] == "activation_echeancier"
+
+
+def test_wrong_intent_changes_the_proposed_action():
+    replies = build_replies()
+    index = next(i for i, r in enumerate(replies) if r["title"] == "Accord simple")
+    readings = perfect_readings(replies)
+    readings[index].parsed_output.intent = ReplyIntent.OTHER
+    summary = evaluate(replies, readings)
+    assert summary["action_count"] == [len(replies) - 1, len(replies)]
+
+
+def test_vague_end_of_month_accepts_both_intents_and_actions():
+    replies = build_replies()
+    index = next(i for i, r in enumerate(replies) if r["title"].startswith("Fin du mois"))
+    readings = perfect_readings(replies)
+    readings[index].parsed_output.intent = ReplyIntent.PROMISED_DATE
+    summary = evaluate(replies, readings)
+    assert summary["intent_accuracy"] == 1.0 and summary["action_accuracy"] == 1.0
+
+
+def test_api_error_counts_as_wrong_without_stopping():
+    import anthropic
+    import httpx
+
+    replies = build_replies()[:3]
+    good = perfect_readings(replies)
+    error = anthropic.APIConnectionError(request=httpx.Request("POST", "https://api.anthropic.com"))
+    summary = evaluate(replies, [good[0], error, good[2]])
+    assert summary["replies"] == 3 and summary["intent_accuracy"] == pytest.approx(2 / 3)
+
+
+def test_partial_flag_is_off_when_every_reply_was_processed(monkeypatch, tmp_path):
+    replies = build_replies()
+    run_main(monkeypatch, tmp_path, FakeClient(costly(perfect_readings(replies), 1_000_000)), "--max-cost", "0.01",
+             "--dataset", str(_one_reply_dataset(tmp_path, replies[0])))
+    assert not list((tmp_path / "out").glob("*__partiel*"))
+    assert list((tmp_path / "out").glob("reponses__*.md"))
+
+
+def _one_reply_dataset(tmp_path, item):
+    path = tmp_path / "un.json"
+    path.write_text(json.dumps([item]))
+    return path
 
 
 def test_a_past_date_read_correctly_counts_as_no_date():

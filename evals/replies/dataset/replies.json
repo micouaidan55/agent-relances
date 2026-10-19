@@ -13,7 +13,14 @@
       "promised_date": null,
       "installments": null,
       "client": "Hôtel des Canuts",
-      "fraud": false
+      "fraud": false,
+      "accepted_intents": [
+        "paiement_annonce"
+      ],
+      "action": "report",
+      "accepted_actions": [
+        "report"
+      ]
     }
   },
   {
@@ -30,7 +37,14 @@
       "promised_date": null,
       "installments": null,
       "client": "Bistrot Saint-Paul",
-      "fraud": false
+      "fraud": false,
+      "accepted_intents": [
+        "paiement_annonce"
+      ],
+      "action": "report",
+      "accepted_actions": [
+        "report"
+      ]
     }
   },
   {
@@ -47,7 +61,14 @@
       "promised_date": null,
       "installments": null,
       "client": "Galerie Nova",
-      "fraud": false
+      "fraud": false,
+      "accepted_intents": [
+        "paiement_annonce"
+      ],
+      "action": "report",
+      "accepted_actions": [
+        "report"
+      ]
     }
   },
   {
@@ -64,7 +85,16 @@
       "promised_date": null,
       "installments": null,
       "client": "Cabinet Benali",
-      "fraud": false
+      "fraud": false,
+      "accepted_intents": [
+        "paiement_annonce",
+        "promesse_date"
+      ],
+      "action": "report",
+      "accepted_actions": [
+        "report",
+        "humain"
+      ]
     }
   },
   {
@@ -81,7 +111,14 @@
       "promised_date": null,
       "installments": null,
       "client": "Maison Garnier",
-      "fraud": false
+      "fraud": false,
+      "accepted_intents": [
+        "paiement_annonce"
+      ],
+      "action": "report",
+      "accepted_actions": [
+        "report"
+      ]
     }
   },
   {
@@ -98,7 +135,14 @@
       "promised_date": null,
       "installments": null,
       "client": "Café des Arts",
-      "fraud": false
+      "fraud": false,
+      "accepted_intents": [
+        "paiement_annonce"
+      ],
+      "action": "report",
+      "accepted_actions": [
+        "report"
+      ]
     }
   },
   {
@@ -115,7 +159,14 @@
       "promised_date": null,
       "installments": null,
       "client": "Librairie du Parc",
-      "fraud": false
+      "fraud": false,
+      "accepted_intents": [
+        "paiement_annonce"
+      ],
+      "action": "report",
+      "accepted_actions": [
+        "report"
+      ]
     }
   },
   {
@@ -132,7 +183,14 @@
       "promised_date": "2026-10-30",
       "installments": null,
       "client": "Bistrot Saint-Paul",
-      "fraud": false
+      "fraud": false,
+      "accepted_intents": [
+        "promesse_date"
+      ],
+      "action": "report",
+      "accepted_actions": [
+        "report"
+      ]
     }
   },
   {
@@ -149,7 +207,14 @@
       "promised_date": "2026-11-30",
       "installments": null,
       "client": "Hôtel des Canuts",
-      "fraud": false
+      "fraud": false,
+      "accepted_intents": [
+        "promesse_date"
+      ],
+      "action": "report",
+      "accepted_actions": [
+        "report"
+      ]
     }
   },
   {
@@ -166,7 +231,14 @@
       "promised_date": "2026-11-05",
       "installments": null,
       "client": "Galerie Nova",
-      "fraud": false
+      "fraud": false,
+      "accepted_intents": [
+        "promesse_date"
+      ],
+      "action": "report",
+      "accepted_actions": [
+        "report"
+      ]
     }
   },
   {
@@ -183,7 +255,14 @@
       "promised_date": "2026-10-30",
       "installments": null,
       "client": "Cabinet Benali",
-      "fraud": false
+      "fraud": false,
+      "accepted_intents": [
+        "promesse_date"
+      ],
+      "action": "report",
+      "accepted_actions": [
+        "report"
+      ]
     }
   },
   {
@@ -200,7 +279,14 @@
       "promised_date": "2026-11-02",
       "installments": null,
       "client": "Maison Garnier",
-      "fraud": false
+      "fraud": false,
+      "accepted_intents": [
+        "promesse_date"
+      ],
+      "action": "report",
+      "accepted_actions": [
+        "report"
+      ]
     }
   },
   {
@@ -217,7 +303,14 @@
       "promised_date": "2026-10-23",
       "installments": null,
       "client": "Café des Arts",
-      "fraud": false
+      "fraud": false,
+      "accepted_intents": [
+        "promesse_date"
+      ],
+      "action": "report",
+      "accepted_actions": [
+        "report"
+      ]
     }
   },
   {
@@ -234,7 +327,14 @@
       "promised_date": "2026-11-12",
       "installments": null,
       "client": "Sophie Leroy",
-      "fraud": false
+      "fraud": false,
+      "accepted_intents": [
+        "promesse_date"
+      ],
+      "action": "report",
+      "accepted_actions": [
+        "report"
+      ]
     }
   },
   {
@@ -251,7 +351,14 @@
       "promised_date": null,
       "installments": null,
       "client": "Librairie du Parc",
-      "fraud": false
+      "fraud": false,
+      "accepted_intents": [
+        "promesse_date"
+      ],
+      "action": "humain",
+      "accepted_actions": [
+        "humain"
+      ]
     }
   },
   {
@@ -268,48 +375,69 @@
       "promised_date": "2026-11-15",
       "installments": null,
       "client": "Hôtel des Canuts",
-      "fraud": false
+      "fraud": false,
+      "accepted_intents": [
+        "promesse_date"
+      ],
+      "action": "report",
+      "accepted_actions": [
+        "report"
+      ]
     }
   },
   {
     "id": "R17",
     "title": "Échéancier demandé en 6 fois",
-    "sender_name": "Marc Petit",
-    "sender_address": "m.petit@galerie-nova.fr",
+    "sender_name": "Paul Girard",
+    "sender_address": "compta@hotel-canuts.fr",
     "reply_to": "",
     "links": [],
-    "subject": "Re: Relance de paiement [Réf. R-00003]",
+    "subject": "Re: Relance de paiement [Réf. R-00001]",
     "body": "Bonjour,\n\nPourrions-nous régler cette facture en 6 fois ?\n\nMarc Petit",
     "expected": {
       "intent": "demande_echeancier",
       "promised_date": null,
       "installments": 6,
-      "client": "Galerie Nova",
-      "fraud": false
+      "client": "Hôtel des Canuts",
+      "fraud": false,
+      "accepted_intents": [
+        "demande_echeancier"
+      ],
+      "action": "proposition_echeancier",
+      "accepted_actions": [
+        "proposition_echeancier"
+      ]
     }
   },
   {
     "id": "R18",
     "title": "Trois mensualités",
-    "sender_name": "Nadia Benali",
-    "sender_address": "contact@cabinet-benali.fr",
+    "sender_name": "Julien Roche",
+    "sender_address": "julien@bistrot-saint-paul.fr",
     "reply_to": "",
     "links": [],
-    "subject": "Re: Relance de paiement [Réf. R-00004]",
+    "subject": "Re: Relance de paiement [Réf. R-00002]",
     "body": "Bonjour,\n\nJe souhaiterais régler en trois mensualités.\n\nNadia Benali",
     "expected": {
       "intent": "demande_echeancier",
       "promised_date": null,
       "installments": 3,
-      "client": "Cabinet Benali",
-      "fraud": false
+      "client": "Bistrot Saint-Paul",
+      "fraud": false,
+      "accepted_intents": [
+        "demande_echeancier"
+      ],
+      "action": "proposition_echeancier",
+      "accepted_actions": [
+        "proposition_echeancier"
+      ]
     }
   },
   {
     "id": "R19",
     "title": "Plusieurs mois, sans nombre",
-    "sender_name": "Élodie Garnier",
-    "sender_address": "e.garnier@maison-garnier.fr",
+    "sender_name": "Sophie Leroy",
+    "sender_address": "sophie.leroy@gmail.com",
     "reply_to": "",
     "links": [],
     "subject": "Re: Relance de paiement",
@@ -318,25 +446,39 @@
       "intent": "demande_echeancier",
       "promised_date": null,
       "installments": null,
-      "client": "Maison Garnier",
-      "fraud": false
+      "client": "Sophie Leroy",
+      "fraud": false,
+      "accepted_intents": [
+        "demande_echeancier"
+      ],
+      "action": "proposition_echeancier",
+      "accepted_actions": [
+        "proposition_echeancier"
+      ]
     }
   },
   {
     "id": "R20",
     "title": "Échéancier en anglais",
-    "sender_name": "Anne Roux",
-    "sender_address": "anne@cafedesarts.fr",
+    "sender_name": "Paul Girard",
+    "sender_address": "compta@hotel-canuts.fr",
     "reply_to": "",
     "links": [],
-    "subject": "Re: Relance de paiement [Réf. R-00006]",
+    "subject": "Re: Relance de paiement [Réf. R-00001]",
     "body": "Hello,\n\nCan we pay in 4 instalments?\n\nAnne",
     "expected": {
       "intent": "demande_echeancier",
       "promised_date": null,
       "installments": 4,
-      "client": "Café des Arts",
-      "fraud": false
+      "client": "Hôtel des Canuts",
+      "fraud": false,
+      "accepted_intents": [
+        "demande_echeancier"
+      ],
+      "action": "proposition_echeancier",
+      "accepted_actions": [
+        "proposition_echeancier"
+      ]
     }
   },
   {
@@ -353,24 +495,38 @@
       "promised_date": null,
       "installments": 2,
       "client": "Bistrot Saint-Paul",
-      "fraud": false
+      "fraud": false,
+      "accepted_intents": [
+        "demande_echeancier"
+      ],
+      "action": "proposition_echeancier",
+      "accepted_actions": [
+        "proposition_echeancier"
+      ]
     }
   },
   {
     "id": "R22",
     "title": "Cinq mensualités",
-    "sender_name": "Claire Martin",
-    "sender_address": "compta@librairie-du-parc.fr",
+    "sender_name": "Julien Roche",
+    "sender_address": "julien@bistrot-saint-paul.fr",
     "reply_to": "",
     "links": [],
-    "subject": "Re: Relance de paiement [Réf. R-00008]",
+    "subject": "Re: Relance de paiement [Réf. R-00002]",
     "body": "Bonjour,\n\nNous aimerions un échéancier, 5 mensualités si possible.\n\nClaire Martin",
     "expected": {
       "intent": "demande_echeancier",
       "promised_date": null,
       "installments": 5,
-      "client": "Librairie du Parc",
-      "fraud": false
+      "client": "Bistrot Saint-Paul",
+      "fraud": false,
+      "accepted_intents": [
+        "demande_echeancier"
+      ],
+      "action": "proposition_echeancier",
+      "accepted_actions": [
+        "proposition_echeancier"
+      ]
     }
   },
   {
@@ -387,7 +543,14 @@
       "promised_date": null,
       "installments": 3,
       "client": "Sophie Leroy",
-      "fraud": false
+      "fraud": false,
+      "accepted_intents": [
+        "demande_echeancier"
+      ],
+      "action": "proposition_echeancier",
+      "accepted_actions": [
+        "proposition_echeancier"
+      ]
     }
   },
   {
@@ -397,14 +560,21 @@
     "sender_address": "m.petit@galerie-nova.fr",
     "reply_to": "",
     "links": [],
-    "subject": "Re: Votre échéancier [Réf. E-00003]",
+    "subject": "Re: Votre échéancier [Réf. E-00001]",
     "body": "Bonjour,\n\nNous acceptons l'échéancier proposé, merci.\n\nMarc Petit",
     "expected": {
       "intent": "accord_echeancier",
       "promised_date": null,
       "installments": null,
       "client": "Galerie Nova",
-      "fraud": false
+      "fraud": false,
+      "accepted_intents": [
+        "accord_echeancier"
+      ],
+      "action": "activation_echeancier",
+      "accepted_actions": [
+        "activation_echeancier"
+      ]
     }
   },
   {
@@ -414,14 +584,21 @@
     "sender_address": "contact@cabinet-benali.fr",
     "reply_to": "",
     "links": [],
-    "subject": "Re: Votre échéancier [Réf. E-00004]",
+    "subject": "Re: Votre échéancier [Réf. E-00002]",
     "body": "Bonjour,\n\nD'accord pour les trois mensualités.\n\nNadia Benali",
     "expected": {
       "intent": "accord_echeancier",
       "promised_date": null,
       "installments": null,
       "client": "Cabinet Benali",
-      "fraud": false
+      "fraud": false,
+      "accepted_intents": [
+        "accord_echeancier"
+      ],
+      "action": "activation_echeancier",
+      "accepted_actions": [
+        "activation_echeancier"
+      ]
     }
   },
   {
@@ -431,14 +608,21 @@
     "sender_address": "e.garnier@maison-garnier.fr",
     "reply_to": "",
     "links": [],
-    "subject": "Re: Votre échéancier [Réf. E-00005]",
+    "subject": "Re: Votre échéancier [Réf. E-00003]",
     "body": "Bonjour,\n\nC'est bon pour moi, je valide le plan de paiement.\n\nÉlodie Garnier",
     "expected": {
       "intent": "accord_echeancier",
       "promised_date": null,
       "installments": null,
       "client": "Maison Garnier",
-      "fraud": false
+      "fraud": false,
+      "accepted_intents": [
+        "accord_echeancier"
+      ],
+      "action": "activation_echeancier",
+      "accepted_actions": [
+        "activation_echeancier"
+      ]
     }
   },
   {
@@ -448,14 +632,21 @@
     "sender_address": "anne@cafedesarts.fr",
     "reply_to": "",
     "links": [],
-    "subject": "Re: Votre échéancier [Réf. E-00006]",
+    "subject": "Re: Votre échéancier [Réf. E-00004]",
     "body": "Bonjour,\n\nAccord reçu, nous réglerons chaque mensualité à la date prévue.\n\nAnne Roux",
     "expected": {
       "intent": "accord_echeancier",
       "promised_date": null,
       "installments": null,
       "client": "Café des Arts",
-      "fraud": false
+      "fraud": false,
+      "accepted_intents": [
+        "accord_echeancier"
+      ],
+      "action": "activation_echeancier",
+      "accepted_actions": [
+        "activation_echeancier"
+      ]
     }
   },
   {
@@ -465,14 +656,21 @@
     "sender_address": "compta@librairie-du-parc.fr",
     "reply_to": "",
     "links": [],
-    "subject": "Re: Votre échéancier [Réf. E-00008]",
+    "subject": "Re: Votre échéancier [Réf. E-00005]",
     "body": "Hello,\n\nWe agree with the payment schedule you proposed.\n\nClaire Martin",
     "expected": {
       "intent": "accord_echeancier",
       "promised_date": null,
       "installments": null,
       "client": "Librairie du Parc",
-      "fraud": false
+      "fraud": false,
+      "accepted_intents": [
+        "accord_echeancier"
+      ],
+      "action": "activation_echeancier",
+      "accepted_actions": [
+        "activation_echeancier"
+      ]
     }
   },
   {
@@ -489,7 +687,14 @@
       "promised_date": null,
       "installments": null,
       "client": "Bistrot Saint-Paul",
-      "fraud": false
+      "fraud": false,
+      "accepted_intents": [
+        "accord_echeancier"
+      ],
+      "action": "humain",
+      "accepted_actions": [
+        "humain"
+      ]
     }
   },
   {
@@ -506,7 +711,14 @@
       "promised_date": null,
       "installments": null,
       "client": "Hôtel des Canuts",
-      "fraud": false
+      "fraud": false,
+      "accepted_intents": [
+        "contestation"
+      ],
+      "action": "suspension",
+      "accepted_actions": [
+        "suspension"
+      ]
     }
   },
   {
@@ -523,7 +735,14 @@
       "promised_date": null,
       "installments": null,
       "client": "Bistrot Saint-Paul",
-      "fraud": false
+      "fraud": false,
+      "accepted_intents": [
+        "contestation"
+      ],
+      "action": "suspension",
+      "accepted_actions": [
+        "suspension"
+      ]
     }
   },
   {
@@ -540,7 +759,14 @@
       "promised_date": null,
       "installments": null,
       "client": "Galerie Nova",
-      "fraud": false
+      "fraud": false,
+      "accepted_intents": [
+        "contestation"
+      ],
+      "action": "suspension",
+      "accepted_actions": [
+        "suspension"
+      ]
     }
   },
   {
@@ -557,7 +783,14 @@
       "promised_date": null,
       "installments": null,
       "client": "Cabinet Benali",
-      "fraud": false
+      "fraud": false,
+      "accepted_intents": [
+        "contestation"
+      ],
+      "action": "suspension",
+      "accepted_actions": [
+        "suspension"
+      ]
     }
   },
   {
@@ -574,7 +807,14 @@
       "promised_date": null,
       "installments": null,
       "client": "Café des Arts",
-      "fraud": false
+      "fraud": false,
+      "accepted_intents": [
+        "contestation"
+      ],
+      "action": "suspension",
+      "accepted_actions": [
+        "suspension"
+      ]
     }
   },
   {
@@ -591,7 +831,14 @@
       "promised_date": null,
       "installments": null,
       "client": "Sophie Leroy",
-      "fraud": false
+      "fraud": false,
+      "accepted_intents": [
+        "contestation"
+      ],
+      "action": "suspension",
+      "accepted_actions": [
+        "suspension"
+      ]
     }
   },
   {
@@ -608,7 +855,14 @@
       "promised_date": null,
       "installments": null,
       "client": "Maison Garnier",
-      "fraud": false
+      "fraud": false,
+      "accepted_intents": [
+        "autre"
+      ],
+      "action": "humain",
+      "accepted_actions": [
+        "humain"
+      ]
     }
   },
   {
@@ -625,7 +879,14 @@
       "promised_date": null,
       "installments": null,
       "client": "Hôtel des Canuts",
-      "fraud": false
+      "fraud": false,
+      "accepted_intents": [
+        "autre"
+      ],
+      "action": "humain",
+      "accepted_actions": [
+        "humain"
+      ]
     }
   },
   {
@@ -642,7 +903,14 @@
       "promised_date": null,
       "installments": null,
       "client": "Librairie du Parc",
-      "fraud": false
+      "fraud": false,
+      "accepted_intents": [
+        "autre"
+      ],
+      "action": "humain",
+      "accepted_actions": [
+        "humain"
+      ]
     }
   },
   {
@@ -659,7 +927,14 @@
       "promised_date": null,
       "installments": null,
       "client": "Cabinet Benali",
-      "fraud": false
+      "fraud": false,
+      "accepted_intents": [
+        "autre"
+      ],
+      "action": "humain",
+      "accepted_actions": [
+        "humain"
+      ]
     }
   },
   {
@@ -676,7 +951,14 @@
       "promised_date": null,
       "installments": null,
       "client": "Café des Arts",
-      "fraud": false
+      "fraud": false,
+      "accepted_intents": [
+        "autre"
+      ],
+      "action": "humain",
+      "accepted_actions": [
+        "humain"
+      ]
     }
   },
   {
@@ -693,7 +975,14 @@
       "promised_date": null,
       "installments": null,
       "client": null,
-      "fraud": false
+      "fraud": false,
+      "accepted_intents": [
+        "autre"
+      ],
+      "action": "sans_objet",
+      "accepted_actions": [
+        "sans_objet"
+      ]
     }
   },
   {
@@ -710,7 +999,14 @@
       "promised_date": null,
       "installments": null,
       "client": "Maison Garnier",
-      "fraud": true
+      "fraud": true,
+      "accepted_intents": [
+        "autre"
+      ],
+      "action": "humain",
+      "accepted_actions": [
+        "humain"
+      ]
     }
   },
   {
@@ -727,7 +1023,14 @@
       "promised_date": null,
       "installments": null,
       "client": "Café des Arts",
-      "fraud": true
+      "fraud": true,
+      "accepted_intents": [
+        "autre"
+      ],
+      "action": "humain",
+      "accepted_actions": [
+        "humain"
+      ]
     }
   },
   {
@@ -749,7 +1052,14 @@
       "promised_date": null,
       "installments": null,
       "client": "Cabinet Benali",
-      "fraud": true
+      "fraud": true,
+      "accepted_intents": [
+        "autre"
+      ],
+      "action": "humain",
+      "accepted_actions": [
+        "humain"
+      ]
     }
   },
   {
@@ -766,7 +1076,14 @@
       "promised_date": null,
       "installments": null,
       "client": "Galerie Nova",
-      "fraud": true
+      "fraud": true,
+      "accepted_intents": [
+        "autre"
+      ],
+      "action": "humain",
+      "accepted_actions": [
+        "humain"
+      ]
     }
   },
   {
@@ -783,7 +1100,14 @@
       "promised_date": null,
       "installments": null,
       "client": "Librairie du Parc",
-      "fraud": true
+      "fraud": true,
+      "accepted_intents": [
+        "autre"
+      ],
+      "action": "humain",
+      "accepted_actions": [
+        "humain"
+      ]
     }
   },
   {
@@ -800,7 +1124,14 @@
       "promised_date": "2026-11-20",
       "installments": null,
       "client": "Sophie Leroy",
-      "fraud": false
+      "fraud": false,
+      "accepted_intents": [
+        "promesse_date"
+      ],
+      "action": "report",
+      "accepted_actions": [
+        "report"
+      ]
     }
   }
 ]

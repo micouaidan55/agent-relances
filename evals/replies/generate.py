@@ -24,11 +24,33 @@ CLIENTS = [
     {"name": "Sophie Leroy", "email": "sophie.leroy@gmail.com", "contact": "Sophie Leroy"},
     {"name": "Librairie du Parc", "email": "compta@librairie-du-parc.fr", "contact": "Claire Martin"},
 ]
-# L'échéancier proposé n° i+1 (E-0000i+1) appartient au même client (voir run.py).
+# Seuls ces clients (indices dans CLIENTS) ont un échéancier proposé, numérotés E-00001… dans cet ordre (voir run.py).
+# Les autres, dont celui de « Accord sans proposition », n'en ont aucun.
+PLAN_CLIENTS = [2, 3, 4, 5, 7]
 
 
 def ref(kind: str, client: int) -> str:
-    return f"[Réf. {kind}-{client + 1:05d}]"
+    number = PLAN_CLIENTS.index(client) + 1 if kind == "E" else client + 1
+    return f"[Réf. {kind}-{number:05d}]"
+
+
+def expected_action(intent: str, date: str | None, fraud: bool, client: str | None, has_plan: bool) -> str:
+    """Action que la spec attend (le client a des factures impayées) : un humain confirme toujours."""
+    if client is None:
+        return "sans_objet"
+    if fraud:
+        return "humain"
+    if intent == "paiement_annonce":
+        return "report"
+    if intent == "promesse_date":
+        return "report" if date else "humain"
+    if intent == "demande_echeancier":
+        return "proposition_echeancier"
+    if intent == "accord_echeancier":
+        return "activation_echeancier" if has_plan else "humain"
+    if intent == "contestation":
+        return "suspension"
+    return "humain"
 
 
 class Builder:
@@ -37,11 +59,14 @@ class Builder:
 
     def add(self, title: str, client: int | None, body: str, intent: str, *, date: str | None = None,
             months: int | None = None, fraud: bool = False, via: str = "reference", sender: str | None = None,
-            name: str = "", subject: str | None = None, kind: str = "R", reply_to: str = "", links=()):
+            name: str = "", subject: str | None = None, kind: str = "R", reply_to: str = "", links=(),
+            accepted_intents: list[str] | None = None, accepted_actions: list[str] | None = None):
         """`via` : reference (objet + adresse de la fiche), expediteur (adresse de la fiche, pas de référence),
         autre_adresse (référence mais adresse inconnue), reference_inconnue (référence fausse + adresse de la fiche),
         inconnu (ni l'un ni l'autre)."""
         card = CLIENTS[client] if client is not None else None
+        if kind == "E" and client not in PLAN_CLIENTS:
+            raise ValueError(f"{title} : ce client n'a pas d'échéancier proposé")
         subject = subject or ("Re: Relance de paiement" if kind == "R" else "Re: Votre échéancier")
         if via in ("reference", "autre_adresse") and card:
             subject += f" {ref(kind, client)}"
@@ -49,12 +74,14 @@ class Builder:
             subject += " [Réf. R-99999]"
         address = sender or (card["email"] if card and via != "autre_adresse" else "inconnu@exemple.fr")
         expected_client = card["name"] if card and via != "inconnu" else None
+        action = expected_action(intent, date, fraud, expected_client, kind == "E" and via != "inconnu")
         self.items.append({
             "id": f"R{len(self.items) + 1:02d}", "title": title, "sender_name": name or (card["contact"] if card else ""),
             "sender_address": address, "reply_to": reply_to, "links": [dict(link) for link in links],
             "subject": subject, "body": body,
             "expected": {"intent": intent, "promised_date": date, "installments": months, "client": expected_client,
-                         "fraud": fraud},
+                         "fraud": fraud, "accepted_intents": accepted_intents or [intent],
+                         "action": action, "accepted_actions": accepted_actions or [action]},
         })
 
 
@@ -65,7 +92,8 @@ def build_replies() -> list[dict]:
     b.add("Virement parti", 0, "Bonjour,\n\nLe virement est parti ce matin, vous devriez le recevoir sous peu.\n\nPaul Girard", "paiement_annonce")
     b.add("Réglé hier", 1, "Bonjour,\n\nNous avons réglé cette facture hier par virement.\n\nJulien", "paiement_annonce", via="expediteur")
     b.add("Chèque posté", 2, "Bonjour, le chèque a été posté lundi, il devrait vous parvenir cette semaine. Marc Petit", "paiement_annonce")
-    b.add("Fin du mois (vague)", 3, "Bonjour,\n\nJe règle ça fin du mois sans faute.\n\nNadia Benali", "paiement_annonce")
+    b.add("Fin du mois (vague)", 3, "Bonjour,\n\nJe règle ça fin du mois sans faute.\n\nNadia Benali", "paiement_annonce",
+          accepted_intents=["paiement_annonce", "promesse_date"], accepted_actions=["report", "humain"])
     b.add("Dès que possible (vague)", 4, "Bonjour, je fais le virement dès que possible, merci de votre patience. E. Garnier", "paiement_annonce", via="expediteur")
     b.add("Paiement en anglais", 5, "Hello,\n\nI have paid this invoice by bank transfer yesterday, please check your account.\n\nAnne", "paiement_annonce")
     b.add("Paiement en cours", 7, "Bonjour,\n\nLe paiement est en cours de traitement par notre comptabilité.\n\nClaire Martin", "paiement_annonce")
@@ -82,12 +110,12 @@ def build_replies() -> list[dict]:
     b.add("15 novembre", 0, "Bonjour,\n\nLe paiement interviendra le 15 novembre.\n\nPaul Girard", "promesse_date", date="2026-11-15", via="autre_adresse", sender="comptabilite@groupe-hotelier.fr", name="Service comptabilité")
 
     # Demande d'échéancier (7)
-    b.add("Échéancier demandé en 6 fois", 2, "Bonjour,\n\nPourrions-nous régler cette facture en 6 fois ?\n\nMarc Petit", "demande_echeancier", months=6)
-    b.add("Trois mensualités", 3, "Bonjour,\n\nJe souhaiterais régler en trois mensualités.\n\nNadia Benali", "demande_echeancier", months=3)
-    b.add("Plusieurs mois, sans nombre", 4, "Bonjour,\n\nSerait-il possible d'étaler le paiement sur plusieurs mois ?\n\nÉlodie Garnier", "demande_echeancier", via="expediteur")
-    b.add("Échéancier en anglais", 5, "Hello,\n\nCan we pay in 4 instalments?\n\nAnne", "demande_echeancier", months=4)
+    b.add("Échéancier demandé en 6 fois", 0, "Bonjour,\n\nPourrions-nous régler cette facture en 6 fois ?\n\nMarc Petit", "demande_echeancier", months=6)
+    b.add("Trois mensualités", 1, "Bonjour,\n\nJe souhaiterais régler en trois mensualités.\n\nNadia Benali", "demande_echeancier", months=3)
+    b.add("Plusieurs mois, sans nombre", 6, "Bonjour,\n\nSerait-il possible d'étaler le paiement sur plusieurs mois ?\n\nÉlodie Garnier", "demande_echeancier", via="expediteur")
+    b.add("Échéancier en anglais", 0, "Hello,\n\nCan we pay in 4 instalments?\n\nAnne", "demande_echeancier", months=4)
     b.add("Deux fois", 1, "Bonjour,\n\nNotre trésorerie est tendue : un paiement en deux fois est-il possible ?\n\nJulien", "demande_echeancier", months=2)
-    b.add("Cinq mensualités", 7, "Bonjour,\n\nNous aimerions un échéancier, 5 mensualités si possible.\n\nClaire Martin", "demande_echeancier", months=5)
+    b.add("Cinq mensualités", 1, "Bonjour,\n\nNous aimerions un échéancier, 5 mensualités si possible.\n\nClaire Martin", "demande_echeancier", months=5)
     b.add("En 3 fois", 6, "Bonjour,\n\nPeut-on payer en 3 fois ?\n\nSophie Leroy", "demande_echeancier", months=3, via="expediteur")
 
     # Accord sur un échéancier (6)
