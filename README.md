@@ -131,7 +131,7 @@ Relancer ne suffit pas : le client répond (« je paie vendredi », « pouvez-vo
 - montants égaux arrondis au centime, la dernière mensualité absorbe l'écart ;
 - l'échéancier couvre toutes les factures impayées du client, un seul à la fois par client.
 
-Le modèle ne calcule jamais rien : la règle est calculée et vérifiée par le code, revérifiée avant tout enregistrement ou dépôt, et un nombre de mensualités hors règle (5, ou 3 pour 250 €) est refusé avec sa raison. Un test exhaustif couvre 1,37 million de cas.
+Le modèle ne calcule jamais rien : la règle est calculée et vérifiée par le code, revérifiée avant tout enregistrement ou dépôt, et un nombre de mensualités hors règle (5, ou 3 pour 250 €) est refusé avec sa raison. Un test exhaustif couvre 1 427 988 cas (chaque total au centime de 0,02 € à 1 000 €, puis à l'euro jusqu'à 20 000 €, pour chaque demande de 2 à 12 mensualités ou sans nombre) : la règle est respectée et le nombre retenu est celui demandé s'il est valide, sinon le maximum.
 
 ### Suivi d'un échéancier
 

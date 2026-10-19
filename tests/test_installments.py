@@ -49,6 +49,9 @@ def _assert_rule(total: Decimal, requested: int | None) -> None:
     amounts = plan_amounts(total, requested)
     assert plan_violations(amounts, total) == [], (total, requested)
     assert sum(amounts) == total, (total, requested)
+    maximum = max_installments(total)
+    chosen = requested if requested is not None and 2 <= requested <= maximum else maximum
+    assert len(amounts) == chosen, (total, requested)   # le nombre demandé s'il est valide, sinon le maximum
 
 
 def test_rule_holds_for_every_amount():
@@ -65,7 +68,7 @@ def test_rule_holds_for_every_amount():
         for requested in all_requests:
             _assert_rule(total, requested)
             n += 1
-    assert n == 99_999 * 12 + 19_000 * 12
+    assert n == 99_999 * 12 + 19_000 * 12 == 1_427_988  # nombre cité dans le README
 
 
 @pytest.mark.parametrize(
@@ -90,3 +93,9 @@ def test_installment_dates():
     assert installment_dates(date(2026, 12, 1), 3) == [
         date(2026, 12, 31), date(2027, 1, 31), date(2027, 2, 28),
     ]
+
+
+def test_readme_cites_the_true_number_of_exhaustive_cases():
+    from pathlib import Path
+    readme = (Path(__file__).resolve().parent.parent / "README.md").read_text()
+    assert f"{99_999 * 12 + 19_000 * 12:,} cas".replace(",", " ") in readme
