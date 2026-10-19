@@ -9,6 +9,7 @@ from agent_relances.models import Plan, PlanStatus, Stage
 from agent_relances.rules.schedule import MIN_GAP_DAYS, StageDelays
 
 MAX_INSTALLMENTS = 4
+EXCEPTION_MAX_INSTALLMENTS = 12   # dérogation humaine motivée uniquement
 MIN_INSTALLMENT = Decimal("100")
 SMALL_TOTAL = Decimal("200")
 FIRST_DUE_DAYS = 30
@@ -20,20 +21,23 @@ class PlanRuleError(ValueError):
     """Demande d'échéancier impossible à satisfaire dans la règle de l'entreprise."""
 
 
-def max_installments(total: Decimal) -> int:
+def max_installments(total: Decimal, *, exception: bool = False) -> int:
+    """Plafond du nombre de versements ; `exception` (dérogation humaine motivée) le relève de 4 à 12, le minimum
+    de 100 € par versement restant obligatoire."""
     if total < SMALL_TOTAL:
         return 2
-    return min(MAX_INSTALLMENTS, int(total // MIN_INSTALLMENT))
+    cap = EXCEPTION_MAX_INSTALLMENTS if exception else MAX_INSTALLMENTS
+    return min(cap, int(total // MIN_INSTALLMENT))
 
 
-def plan_amounts(total: Decimal, requested: int | None) -> list[Decimal]:
+def plan_amounts(total: Decimal, requested: int | None, *, exception: bool = False) -> list[Decimal]:
     if total != total.quantize(_CENT):
         raise PlanRuleError("Le total doit être exprimé en centimes entiers.")
     if total < 2 * _CENT:
         raise PlanRuleError("Le total est trop faible pour être réparti en au moins 2 versements.")
     if requested == 1:
         raise PlanRuleError("Un paiement en une seule fois n'est pas un échéancier.")
-    maximum = max_installments(total)
+    maximum = max_installments(total, exception=exception)
     count = requested if requested is not None and 2 <= requested <= maximum else maximum
     base = (total / count).quantize(_CENT, rounding=ROUND_DOWN)
     amounts = [base] * (count - 1)
@@ -41,12 +45,13 @@ def plan_amounts(total: Decimal, requested: int | None) -> list[Decimal]:
     return amounts
 
 
-def plan_violations(amounts: list[Decimal], total: Decimal) -> list[str]:
+def plan_violations(amounts: list[Decimal], total: Decimal, *, exception: bool = False) -> list[str]:
     problems: list[str] = []
     if len(amounts) < 2:
         problems.append("Un échéancier compte au moins 2 versements.")
-    if len(amounts) > max_installments(total):
-        problems.append(f"Trop de versements : {len(amounts)} pour un maximum de {max_installments(total)}.")
+    maximum = max_installments(total, exception=exception)
+    if len(amounts) > maximum:
+        problems.append(f"Trop de versements : {len(amounts)} pour un maximum de {maximum}.")
     if any(a != a.quantize(_CENT) for a in amounts):
         problems.append("Les montants doivent être en centimes entiers.")
     if any(a < _CENT for a in amounts):
