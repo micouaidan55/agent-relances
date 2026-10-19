@@ -125,6 +125,8 @@ def _prepare(kind, stored, key, reminders, recovery, source, outbox, today, inst
         if kind is ActionKind.POSTPONE and (stored["action_until"] is None or stored["action_until"] <= today):
             return "La date de report est dépassée : à traiter manuellement."
         return {}
+    if kind is ActionKind.ACTIVATE_PLAN:
+        return _prepare_activation(recovery.open_plan_for(key), reminders, source, outbox, today)
     unpaid = source.unpaid_of(key, today)
     card = reminders.get_client(key)
     if card is None:
@@ -150,17 +152,60 @@ def _prepare(kind, stored, key, reminders, recovery, source, outbox, today, inst
         except PlanRuleError as error:
             return str(error)
         return {"unpaid": unpaid, "card": card, "total": total, "amounts": amounts, "requested": asked}
-    if kind is ActionKind.ACTIVATE_PLAN:
-        plan = recovery.open_plan_for(key)
-        if plan is None:
-            return "Aucun échéancier proposé à activer pour ce client."
-        if plan.status is PlanStatus.ACTIVE:  # reprise d'une activation dont le dépôt a échoué, quel que soit le jour
-            if plan_eml_path(outbox, plan.id, CONFIRMATION_SUFFIX).exists():
-                return "L'échéancier est déjà actif et sa confirmation est déposée."
-        elif plan.status is not PlanStatus.PROPOSED:
-            return "Aucun échéancier proposé à activer pour ce client."
-        return {"plan": plan, "card": card, "unpaid": unpaid}
     return f"Action inconnue : {kind.value}"
+
+
+def _prepare_activation(plan: Plan | None, reminders: ReminderStore, source: InvoiceSource, outbox: Path,
+                        today: date):
+    """Accord du client (réponse confirmée ou saisie à la main) : vérifie sans rien écrire ; message d'erreur (str)
+    ou éléments à appliquer. Une facture couverte qui n'est plus impayée bloque l'activation."""
+    if plan is None:
+        return "Aucun échéancier proposé à activer pour ce client."
+    if plan.status is PlanStatus.ACTIVE:  # reprise d'une activation dont le dépôt a échoué, quel que soit le jour
+        if plan_eml_path(outbox, plan.id, CONFIRMATION_SUFFIX).exists():
+            return "L'échéancier est déjà actif et sa confirmation est déposée."
+    elif plan.status is not PlanStatus.PROPOSED:
+        return "Aucun échéancier proposé à activer pour ce client."
+    card = reminders.get_client(plan.client_key)
+    if card is None:
+        return "Fiche client introuvable."
+    unpaid = source.unpaid_of(plan.client_key, today)
+    if plan.status is PlanStatus.PROPOSED:
+        still_unpaid = {i.invoice_id for i in unpaid}
+        if any(invoice_id not in still_unpaid for invoice_id in plan.invoice_ids):
+            return ("Une facture couverte par l'échéancier n'est plus impayée : le montant proposé n'est plus juste. "
+                    "Annule l'échéancier et propose-en un nouveau.")
+    return {"plan": plan, "card": card, "unpaid": unpaid}
+
+
+def _activate_and_confirm(prepared: dict, recovery: RecoveryStore, outbox: Path, api, company: str,
+                          today: date) -> None:
+    """Active l'échéancier (dates fixées depuis `today`) puis prépare et dépose la confirmation au client."""
+    plan = prepared["plan"]
+    if plan.status is PlanStatus.PROPOSED and not recovery.activate_plan(plan.id, today):
+        raise ValueError("L'échéancier n'est plus à l'état proposé.")
+    plan = recovery.get_plan(plan.id)
+    numbers = _numbers(prepared["unpaid"], plan.invoice_ids)
+    draft, *_ = confirmation_draft(api, plan, prepared["card"], company, invoice_numbers=numbers)
+    deposit_plan_draft(outbox, plan, prepared["card"], draft, invoice_numbers=numbers)
+
+
+def record_agreement(plan_id: int, reminders: ReminderStore, recovery: RecoveryStore, source: InvoiceSource,
+                     outbox: Path, api, company: str, today: date) -> list[str]:
+    """Accord du client saisi à la main (par téléphone, par exemple) : même chemin qu'une réponse « accord »
+    confirmée. Renvoie les erreurs (vide si succès)."""
+    plan = recovery.get_plan(plan_id)
+    prepared = _prepare_activation(plan, reminders, source, outbox, today)
+    if isinstance(prepared, str):
+        return [prepared]
+    try:
+        _activate_and_confirm(prepared, recovery, outbox, api, company, today)
+    except Exception as error:
+        log.exception("Échéancier %d : accord non enregistré", plan_id)
+        return [f"Accord non enregistré entièrement : {error}"]
+    reminders.log(None, "accord_echeancier_saisi", {"echeancier": plan_id, "client": plan.client_key})
+    log.info("Échéancier %d activé sur accord saisi à la main.", plan_id)
+    return []
 
 
 def _numbers(unpaid: list[OverdueInvoice], invoice_ids: list[int]) -> list[str]:
@@ -186,13 +231,7 @@ def _apply(kind, stored, key, prepared, reminders, recovery, outbox, api, compan
         draft, *_ = proposal_draft(api, plan, card, company, prepared["requested"], invoice_numbers=numbers)
         deposit_plan_draft(outbox, plan, card, draft, invoice_numbers=numbers, requested=prepared["requested"])
     elif kind is ActionKind.ACTIVATE_PLAN:
-        plan = prepared["plan"]
-        if plan.status is PlanStatus.PROPOSED and not recovery.activate_plan(plan.id, today):
-            raise ValueError("L'échéancier n'est plus à l'état proposé.")
-        plan = recovery.get_plan(plan.id)
-        numbers = _numbers(prepared["unpaid"], plan.invoice_ids)
-        draft, *_ = confirmation_draft(api, plan, prepared["card"], company, invoice_numbers=numbers)
-        deposit_plan_draft(outbox, plan, prepared["card"], draft, invoice_numbers=numbers)
+        _activate_and_confirm(prepared, recovery, outbox, api, company, today)
 
 
 def _undo(recovery: RecoveryStore, reply_id: int, prepared, today: date) -> None:

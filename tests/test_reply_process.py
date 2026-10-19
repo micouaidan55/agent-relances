@@ -5,7 +5,7 @@ from email.message import EmailMessage
 import pytest
 
 from agent_relances.models import ActionKind, PlanStatus, ReplyIntent, ReplyReading, ReplyStatus
-from agent_relances.replies.process import confirm_reply, dismiss_reply, process_replies
+from agent_relances.replies.process import confirm_reply, dismiss_reply, process_replies, record_agreement
 from agent_relances.sources import InvoiceSource
 from agent_relances.storage.db import connect
 from agent_relances.storage.recovery import RecoveryStore
@@ -331,3 +331,60 @@ def test_reply_from_a_client_in_dispute_is_proposed_to_a_human(world):
     world.recovery.add_dispute(KEY, "dossier", D("450.00"), TODAY)
     rid = world.receive(reading(ReplyIntent.PAYMENT_ANNOUNCED), body="Virement parti.")
     assert world.recovery.get_reply(rid)["proposed_action"] is ActionKind.HUMAN
+
+
+def propose(world) -> int:
+    assert world.confirm(world.receive(reading(ReplyIntent.PLAN_REQUEST), message_id="<a@x>")) == []
+    return world.recovery.open_plan_for(KEY).id
+
+
+def agree_by_hand(world, plan_id, on=TODAY) -> list[str]:
+    return record_agreement(plan_id, world.reminders, world.recovery, world.source, world.outbox, None,
+                            "Atelier Lumière", on)
+
+
+def test_agreement_recorded_by_hand_activates_and_deposits_the_confirmation(world):
+    plan_id = propose(world)
+    assert agree_by_hand(world, plan_id) == []
+    plan = world.recovery.get_plan(plan_id)
+    assert plan.status is PlanStatus.ACTIVE and plan.agreed_on == TODAY
+    assert plan.installments[0].due_date == date(2026, 11, 15)
+    confirmation = world.outbox / f"echeancier_{plan_id:05d}_confirmation.eml"
+    assert "15/11/2026" in confirmation.read_text(errors="ignore")
+    assert agree_by_hand(world, plan_id)                         # deuxième accord : refusé, rien de nouveau
+    assert len(list(world.outbox.glob("*_confirmation.eml"))) == 1
+
+
+def test_agreement_by_hand_uses_the_same_path_as_a_reply(world, monkeypatch):
+    plan_id = propose(world)
+    calls = []
+    real = confirm_module._activate_and_confirm
+    monkeypatch.setattr(confirm_module, "_activate_and_confirm", lambda *a, **k: calls.append(a) or real(*a, **k))
+    assert agree_by_hand(world, plan_id) == []
+    assert len(calls) == 1
+
+
+def test_agreement_by_hand_is_refused_when_a_covered_invoice_was_paid(world):
+    plan_id = propose(world)
+    world.repo.mark_paid(world.ids[0], date(2026, 10, 15))
+    errors = agree_by_hand(world, plan_id)
+    assert errors and "annule" in errors[0].lower() and "nouveau" in errors[0]
+    assert world.recovery.get_plan(plan_id).status is PlanStatus.PROPOSED
+    assert not list(world.outbox.glob("*_confirmation.eml"))
+
+
+def test_agreement_reply_is_refused_when_a_covered_invoice_was_paid(world):
+    propose(world)
+    rid = world.receive(reading(ReplyIntent.PLAN_AGREEMENT), message_id="<b@x>")
+    world.repo.mark_paid(world.ids[1], date(2026, 10, 15))
+    errors = world.confirm(rid)
+    assert errors and "annule" in errors[0].lower()
+    assert world.recovery.open_plan_for(KEY).status is PlanStatus.PROPOSED
+    assert world.status(rid) is ReplyStatus.TO_REVIEW
+
+
+def test_agreement_by_hand_on_a_cancelled_plan_is_refused(world):
+    plan_id = propose(world)
+    world.recovery.set_plan_status(plan_id, PlanStatus.CANCELLED, TODAY)
+    assert agree_by_hand(world, plan_id)
+    assert world.recovery.get_plan(plan_id).status is PlanStatus.CANCELLED

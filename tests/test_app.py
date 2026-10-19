@@ -390,3 +390,16 @@ def test_clean_unmatched_reply_has_no_fraud_warning(env, recovery):
     add_unmatched(recovery)
     at = run_app("app_pages/reponses.py")
     assert not any("suspecte" in w.value for w in at.warning)
+
+
+def test_client_agreement_by_hand_activates_a_proposed_plan(env, recovery):
+    tmp_path, _ = env
+    total = Decimal("1200.50")
+    plan_id = recovery.create_plan(KEY, [1], total, plan_amounts(total, 4), TODAY)
+    at = run_app("app_pages/echeanciers.py")
+    at.button(key=f"accord-plan-{plan_id}").click().run()
+    assert not at.exception and not at.error
+    plan = recovery.get_plan(plan_id)
+    assert plan.status is PlanStatus.ACTIVE and plan.agreed_on == TODAY
+    assert (tmp_path / "deposees" / f"echeancier_{plan_id:05d}_confirmation.eml").exists()
+    assert not any(b.key == f"accord-plan-{plan_id}" for b in at.button)

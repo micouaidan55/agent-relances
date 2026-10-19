@@ -23,7 +23,7 @@ from agent_relances.models import (
 from agent_relances.outbox import reference, save_plan_eml
 from agent_relances.plans import installment_reminder_draft, refresh_plans
 from agent_relances.prepare import prepare_today, validate_reminder
-from agent_relances.replies.process import confirm_reply, dismiss_reply, process_replies
+from agent_relances.replies.process import confirm_reply, dismiss_reply, process_replies, record_agreement
 from agent_relances.rules.installments import InstallmentDue, dispute_due, installment_steps, max_installments
 from agent_relances.rules.profile import client_profile
 from agent_relances.rules.schedule import UNNAMED_CLIENT
@@ -532,6 +532,17 @@ def _render_plan(plan: Plan, reminders: ReminderStore, recovery_: RecoveryStore,
         if plan.status not in (PlanStatus.PROPOSED, PlanStatus.ACTIVE):
             return
         actions = st.container(horizontal=True)
+        if plan.status is PlanStatus.PROPOSED and actions.button(
+                "Accord du client reçu", type="primary", key=f"accord-plan-{plan.id}",
+                help="Accord donné hors réponse écrite (téléphone…) : les dates partent d'aujourd'hui et la "
+                     "confirmation est déposée."):
+            errors = record_agreement(plan.id, reminders, recovery_, source, outbox(), api_client(), company(),
+                                      today())
+            if errors:
+                st.error("Accord refusé : " + " ; ".join(md_escape(e) for e in errors))
+            else:
+                st.session_state["flash"] = ("success", "Échéancier activé : confirmation déposée.")
+                st.rerun()
         if plan.status is PlanStatus.ACTIVE:
             for installment in plan.installments:
                 if installment.received_on is None and actions.button(
