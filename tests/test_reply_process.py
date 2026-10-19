@@ -438,3 +438,85 @@ def test_attaching_twice_or_to_an_unknown_client_is_refused(world):
     assert world.status(reply_id) is ReplyStatus.UNMATCHED
     assert attach(world, reply_id, None) == []
     assert attach(world, reply_id, None)
+
+
+# --- dérogation exceptionnelle au plafond de 4 mensualités ---
+
+MOTIF = "Client en difficulté, accord de la direction"
+
+
+@pytest.fixture
+def big_world(tmp_path):
+    return World(tmp_path, amounts=("500.00", "500.00", "500.00"))        # 1 500 € dus
+
+
+def _request(w):
+    return w.receive(reading(ReplyIntent.PLAN_REQUEST))
+
+
+def test_more_than_four_installments_without_reason_is_refused(big_world):
+    w = big_world
+    rid = _request(w)
+    for reason in (None, "", "   "):
+        errors = w.confirm(rid, installments=6, exception_reason=reason)
+        assert errors and "dérogation" in errors[0] and "motif" in errors[0]
+    assert w.recovery.list_plans() == [] and w.status(rid) is ReplyStatus.TO_REVIEW
+    assert not w.outbox.exists() or not list(w.outbox.glob("*.eml"))
+
+
+def test_exception_with_reason_creates_the_plan_stores_and_journals_it(big_world):
+    w = big_world
+    rid = _request(w)
+    assert w.confirm(rid, installments=6, exception_reason=f"  {MOTIF}  ") == []
+    [plan] = w.recovery.list_plans()
+    assert len(plan.installments) == 6 and plan.exception_reason == MOTIF
+    assert sum(i.amount for i in plan.installments) == D("1500.00")
+    assert list(w.outbox.glob("echeancier_*_proposition.eml"))
+    entries = [e for e in w.reminders.list_log() if e["action"] == "reponse_appliquee"]
+    assert entries[0]["detail"]["derogation"] == MOTIF
+
+
+def test_exception_reaches_twelve_but_not_thirteen(tmp_path):
+    w = World(tmp_path, amounts=("1000.00", "500.00"))
+    rid = _request(w)
+    errors = w.confirm(rid, installments=13, exception_reason=MOTIF)
+    assert errors and "Trop de versements" in errors[0] and w.recovery.list_plans() == []
+    assert w.status(rid) is ReplyStatus.TO_REVIEW
+    assert w.confirm(rid, installments=12, exception_reason=MOTIF) == []
+    assert len(w.recovery.list_plans()[0].installments) == 12
+
+
+def test_exception_keeps_the_hundred_euro_minimum(tmp_path):
+    w = World(tmp_path, amounts=("300.00", "300.00"))                          # 600 € dus : 6 x 100 € au plus
+    rid = _request(w)
+    errors = w.confirm(rid, installments=7, exception_reason=MOTIF)
+    assert errors and "Trop de versements" in errors[0]
+    assert w.confirm(rid, installments=6, exception_reason=MOTIF) == []
+    assert all(i.amount == D("100.00") for i in w.recovery.list_plans()[0].installments)
+
+
+def test_reason_is_ignored_when_four_or_fewer_installments(big_world):
+    w = big_world
+    rid = _request(w)
+    assert w.confirm(rid, installments=3, exception_reason=MOTIF) == []
+    plan = w.recovery.list_plans()[0]
+    assert len(plan.installments) == 3 and plan.exception_reason is None
+    assert "derogation" not in w.reminders.list_log()[0]["detail"]
+
+
+def test_default_count_never_exceeds_four_even_with_a_reason(big_world):
+    w = big_world
+    rid = w.receive(reading(ReplyIntent.PLAN_REQUEST, installments=10))
+    assert w.confirm(rid, exception_reason=MOTIF) == []
+    plan = w.recovery.list_plans()[0]
+    assert len(plan.installments) == 4 and plan.exception_reason is None
+
+
+def test_exception_plan_activates_and_confirmation_is_deposited(big_world):
+    w = big_world
+    w.confirm(_request(w), installments=6, exception_reason=MOTIF)
+    agreement = w.receive(reading(ReplyIntent.PLAN_AGREEMENT), message_id="<b@x>")
+    assert w.confirm(agreement) == []
+    plan = w.recovery.open_plan_for(KEY)
+    assert plan.status is PlanStatus.ACTIVE and len(plan.installments) == 6
+    assert len(list(w.outbox.glob("*_confirmation.eml"))) == 1

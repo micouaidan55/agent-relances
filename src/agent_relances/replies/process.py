@@ -18,7 +18,9 @@ from agent_relances.replies.actions import propose_action, reply_is_suspicious
 from agent_relances.replies.matching import fetch_replies
 from agent_relances.replies.reader import promised_date_of, read_reply
 from agent_relances.outbox import plan_eml_path
-from agent_relances.rules.installments import PlanRuleError, max_installments, plan_amounts, plan_violations
+from agent_relances.rules.installments import (
+    EXCEPTION_MAX_INSTALLMENTS, PlanRuleError, max_installments, plan_amounts, plan_violations,
+)
 from agent_relances.sources import InvoiceSource
 from agent_relances.storage.recovery import RecoveryStore
 from agent_relances.storage.repository import ReminderStore
@@ -115,12 +117,16 @@ def _read(api, email, company: str, today: date) -> tuple[ReplyReading | None, U
 
 
 def confirm_reply(reply_id: int, reminders: ReminderStore, recovery: RecoveryStore, source: InvoiceSource,
-                  outbox: Path, api, company: str, today: date, installments: int | None = None) -> list[str]:
+                  outbox: Path, api, company: str, today: date, installments: int | None = None,
+                  exception_reason: str | None = None) -> list[str]:
     """Applique l'action proposée, confirmée par un humain ; renvoie les erreurs (vide si succès).
 
     Ordre : 1. tout ce qui peut être refusé est vérifié sans rien écrire ; 2. le statut « appliquée » est posé par une
     transition atomique, seule la confirmation qui l'obtient agit (une double confirmation agit une fois) ;
     3. les effets ; s'ils échouent, ce qu'ils ont créé est défait et la réponse redevient « à traiter ».
+
+    `installments` au-delà du plafond normal (4) n'est accepté que sur dérogation humaine : `exception_reason`, un
+    motif écrit non vide, jusqu'à 12 versements de 100 € au moins. Le motif est conservé sur l'échéancier et au journal.
     """
     stored = recovery.get_reply(reply_id)
     if stored is None:
@@ -129,7 +135,8 @@ def confirm_reply(reply_id: int, reminders: ReminderStore, recovery: RecoverySto
         return ["Cette réponse n'est pas à traiter (déjà traitée, classée ou non rattachée)."]
     key, kind = stored["client_key"], stored["proposed_action"]
 
-    prepared = _prepare(kind, stored, key, reminders, recovery, source, outbox, today, installments)
+    prepared = _prepare(kind, stored, key, reminders, recovery, source, outbox, today, installments,
+                       (exception_reason or "").strip() or None)
     if isinstance(prepared, str):
         return [prepared]
 
@@ -141,12 +148,15 @@ def confirm_reply(reply_id: int, reminders: ReminderStore, recovery: RecoverySto
         _undo(recovery, reply_id, prepared, today)
         log.exception("Réponse %d : application échouée", reply_id)
         return [f"Action non appliquée : {error}"]
-    reminders.log(None, "reponse_appliquee", {"reponse": reply_id, "client": key, "action": kind.value})
+    detail = {"reponse": reply_id, "client": key, "action": kind.value}
+    if isinstance(prepared, dict) and prepared.get("exception_reason"):
+        detail["derogation"] = prepared["exception_reason"]
+    reminders.log(None, "reponse_appliquee", detail)
     log.info("Réponse %d appliquée : %s", reply_id, kind.value)
     return []
 
 
-def _prepare(kind, stored, key, reminders, recovery, source, outbox, today, installments):
+def _prepare(kind, stored, key, reminders, recovery, source, outbox, today, installments, exception_reason=None):
     """Vérifie et prépare l'action sans rien écrire ; renvoie un message d'erreur (str) ou les éléments à appliquer."""
     if kind in (ActionKind.POSTPONE, ActionKind.SUSPEND, ActionKind.HUMAN, ActionKind.NONE):
         if kind is ActionKind.POSTPONE and (stored["action_until"] is None or stored["action_until"] <= today):
@@ -167,18 +177,26 @@ def _prepare(kind, stored, key, reminders, recovery, source, outbox, today, inst
         maximum = max_installments(total)
         asked = stored["requested_installments"]
         count = installments if installments is not None else min(asked if asked and asked >= 2 else maximum, maximum)
+        derogation = None   # le motif n'est retenu que si la dérogation sert vraiment (plus que le plafond normal)
         try:
             if installments is not None:
                 if count < 1:
                     return "Le nombre de mensualités doit être positif."
+                if count > maximum and exception_reason is None and count <= max_installments(total, exception=True):
+                    return (f"{count} mensualités refusées pour {total} € : au-delà de {maximum} mensualités, une "
+                            "dérogation exceptionnelle est nécessaire, avec un motif de dérogation écrit "
+                            f"({EXCEPTION_MAX_INSTALLMENTS} mensualités au plus, 100 € au moins chacune).")
+                derogation = exception_reason if count > maximum else None
                 base = (total / count).quantize(_CENT, rounding=ROUND_DOWN)
-                problems = plan_violations([base] * (count - 1) + [total - base * (count - 1)], total)
+                problems = plan_violations([base] * (count - 1) + [total - base * (count - 1)], total,
+                                           exception=derogation is not None)
                 if problems:
                     return f"{count} mensualités refusées pour {total} € : " + " ".join(problems)
-            amounts = plan_amounts(total, count)
+            amounts = plan_amounts(total, count, exception=derogation is not None)
         except PlanRuleError as error:
             return str(error)
-        return {"unpaid": unpaid, "card": card, "total": total, "amounts": amounts, "requested": asked}
+        return {"unpaid": unpaid, "card": card, "total": total, "amounts": amounts, "requested": asked,
+                "exception_reason": derogation}
     return f"Action inconnue : {kind.value}"
 
 
@@ -251,7 +269,8 @@ def _apply(kind, stored, key, prepared, reminders, recovery, outbox, api, compan
         log.info("Réponse %d à traiter par un humain, client %s non relancé.", stored["id"], key)
     elif kind is ActionKind.PROPOSE_PLAN:
         unpaid, card = prepared["unpaid"], prepared["card"]
-        plan_id = recovery.create_plan(key, [i.invoice_id for i in unpaid], prepared["total"], prepared["amounts"], today)
+        plan_id = recovery.create_plan(key, [i.invoice_id for i in unpaid], prepared["total"], prepared["amounts"], today,
+                                    exception_reason=prepared["exception_reason"])
         prepared["plan_id"] = plan_id
         plan = recovery.get_plan(plan_id)
         numbers = _numbers(unpaid, plan.invoice_ids)
