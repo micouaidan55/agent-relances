@@ -1,5 +1,6 @@
 """Éléments d'interface Streamlit partagés par les pages de app/."""
 
+import logging
 import os
 import re
 from datetime import date
@@ -11,19 +12,28 @@ import streamlit as st
 from agent_factures.agent.loop import DEFAULT_COMPANY
 from dotenv import load_dotenv
 
+from agent_relances.disputes.dossier import open_dispute
+from agent_relances.drafting.checker import check_plan_draft
 from agent_relances.formatting import date_fr, euros
 from agent_relances.metrics import dashboard
 from agent_relances.models import (
-    STAGE_LABELS, Client, DraftSource, Profile, ReminderStatus, Tone, client_key,
+    STAGE_LABELS, ActionKind, Client, DraftSource, Plan, PlanStatus, Profile, ReminderStatus, ReplyIntent,
+    ReplyStatus, Tone, client_key,
 )
+from agent_relances.outbox import reference, save_plan_eml
+from agent_relances.plans import installment_reminder_draft, refresh_plans
 from agent_relances.prepare import prepare_today, validate_reminder
+from agent_relances.replies.process import confirm_reply, dismiss_reply, process_replies
+from agent_relances.rules.installments import InstallmentDue, dispute_due, installment_steps, max_installments
 from agent_relances.rules.profile import client_profile
 from agent_relances.rules.schedule import UNNAMED_CLIENT
 from agent_relances.sources import FacturesSourceError, InvoiceSource
 from agent_relances.storage.db import connect
+from agent_relances.storage.recovery import RecoveryStore
 from agent_relances.storage.repository import ReminderStore, StoredReminder
 
 load_dotenv()
+log = logging.getLogger(__name__)
 
 PROFILE_LABELS = {Profile.GOOD: "Bon payeur", Profile.OCCASIONAL: "Occasionnel", Profile.CHRONIC: "Retardataire chronique"}
 TONE_LABELS = {Tone.LIGHT: "Léger", Tone.NEUTRAL: "Neutre", Tone.FIRM: "Ferme"}
@@ -31,6 +41,25 @@ STATUS_LABELS = {
     ReminderStatus.TO_VALIDATE: "À valider", ReminderStatus.VALIDATED: "Validée", ReminderStatus.POSTPONED: "Reportée",
     ReminderStatus.HUMAN: "À traiter par un humain", ReminderStatus.CANCELLED: "Annulée",
 }
+INTENT_LABELS = {
+    ReplyIntent.PAYMENT_ANNOUNCED: "Paiement annoncé", ReplyIntent.PROMISED_DATE: "Date de paiement promise",
+    ReplyIntent.PLAN_REQUEST: "Demande d'échéancier", ReplyIntent.PLAN_AGREEMENT: "Accord sur l'échéancier",
+    ReplyIntent.DISPUTE: "Contestation", ReplyIntent.OTHER: "Autre",
+}
+ACTION_LABELS = {
+    ActionKind.POSTPONE: "Reporter les relances", ActionKind.SUSPEND: "Suspendre les relances",
+    ActionKind.PROPOSE_PLAN: "Proposer un échéancier", ActionKind.ACTIVATE_PLAN: "Activer l'échéancier",
+    ActionKind.HUMAN: "À traiter par un humain", ActionKind.NONE: "Sans objet",
+}
+REPLY_STATUS_LABELS = {
+    ReplyStatus.TO_REVIEW: "À traiter", ReplyStatus.APPLIED: "Appliquée", ReplyStatus.DISMISSED: "Classée",
+    ReplyStatus.UNMATCHED: "Non rattachée",
+}
+PLAN_STATUS_LABELS = {
+    PlanStatus.PROPOSED: "Proposé", PlanStatus.ACTIVE: "En cours", PlanStatus.SETTLED: "Soldé",
+    PlanStatus.BROKEN: "Rompu", PlanStatus.CANCELLED: "Annulé",
+}
+NO_API_KEY_REPLIES = "Clé d'API absente : réponses enregistrées sans lecture automatique, à traiter par un humain."
 NEW_CARD = "Nouvelle fiche"
 SOURCE_LABELS = {DraftSource.MODEL: "Rédigée par Claude, faits vérifiés", DraftSource.FALLBACK: "Modèle de texte de secours"}
 
@@ -78,6 +107,32 @@ def outbox() -> Path:
     return _path("AGENT_RELANCES_OUTBOX", "data/relances_deposees")
 
 
+def recovery() -> RecoveryStore:
+    return RecoveryStore(_connection(str(_path("AGENT_RELANCES_DB", "data/relances.db"))))
+
+
+def inbox() -> Path:
+    return _path("AGENT_RELANCES_INBOX", "../agent-emails/inbox")
+
+
+def dossiers_root() -> Path:
+    return _path("AGENT_RELANCES_DOSSIERS", "data/contentieux")
+
+
+def company_domain() -> str:
+    return os.environ.get("COMPANY_DOMAIN", "").strip()
+
+
+def lawyer_email() -> str:
+    return os.environ.get("AVOCAT_EMAIL", "").strip()
+
+
+def factures_base_dir() -> Path:
+    """Racine d'agent-factures : ses `source_file` sont relatifs à sa racine (data/uploads/…, inbox/…) et sa base
+    est dans `<racine>/data/`."""
+    return _path("AGENT_FACTURES_DB", "data/demo_factures.db").resolve().parent.parent
+
+
 def api_client() -> anthropic.Anthropic | None:
     return anthropic.Anthropic() if os.environ.get("ANTHROPIC_API_KEY") else None
 
@@ -94,8 +149,10 @@ def _source_or_error() -> InvoiceSource | None:
 def _flash() -> None:
     message = st.session_state.pop("flash", None)
     if message:
-        kind, text = message
+        kind, text, *code = message
         getattr(st, kind)(text)
+        if code:
+            st.code(code[0], language=None, wrap_lines=True)
 
 
 def _render_reminder(reminder: StoredReminder, reminders: ReminderStore, source: InvoiceSource) -> None:
@@ -148,6 +205,7 @@ def render_today_page() -> None:
     if source is None:
         return
     reminders = store()
+    holds_and_plans = recovery()
     api = api_client()
     if api is None:
         st.warning("Clé d'API Claude absente : les relances seront préparées avec le modèle de texte de secours.")
@@ -155,7 +213,7 @@ def render_today_page() -> None:
         with st.status("Préparation des relances…", expanded=True) as box:
             try:
                 result = prepare_today(
-                    source, reminders, api, company(), today(),
+                    source, reminders, api, company(), today(), recovery=holds_and_plans,
                     on_progress=lambda p: box.write(
                         f"{md_escape(p.due.client.name)} : palier {int(p.due.stage)}, {SOURCE_LABELS[p.source]}"))
             except Exception:
@@ -262,7 +320,7 @@ def render_dashboard_page() -> None:
     source = _source_or_error()
     if source is None:
         return
-    board = dashboard(source, store(), today())
+    board = dashboard(source, store(), today(), recovery())
     row = st.container(horizontal=True)
     row.metric("Montant en retard", euros(board.overdue_total))
     row.metric("Factures en retard", board.overdue_count)
@@ -276,6 +334,10 @@ def render_dashboard_page() -> None:
     row.metric("Coût moyen par relance", f"{board.mean_cost_usd:.4f} $")
     row.metric("Recours au modèle de secours",
                f"{board.fallback_rate:.0%}" if board.fallback_rate is not None else "—")
+    row = st.container(horizontal=True)
+    row.metric("Échéanciers en cours", board.plans_active)
+    row.metric("Reste dû sur échéanciers", euros(board.plans_remaining))
+    row.metric("Contentieux", board.disputes)
     st.subheader("Factures en retard par palier")
     st.bar_chart(pd.DataFrame({"Palier": list(board.by_stage), "Factures": list(board.by_stage.values())}),
                  x="Palier", y="Factures")
@@ -288,7 +350,11 @@ def _render_list(status: ReminderStatus, empty: str) -> None:
     for reminder in items:
         when = date_fr(reminder.decided_on) if reminder.decided_on else "—"
         numbers = ", ".join(i.number for i in reminder.invoices)
-        with st.expander(f"{md_escape(reminder.client_name)} — {md_escape(numbers)} — {when}"):
+        ref = reference("R", reminder.id)
+        label = f"{md_escape(reminder.client_name)} — {md_escape(numbers)} — {when}"
+        with st.expander(f"{label} — {ref}" if status is ReminderStatus.VALIDATED else label):
+            if status is ReminderStatus.VALIDATED:
+                st.caption(f"Référence : {ref}")
             if reminder.body:
                 st.code(reminder.body, language=None, wrap_lines=True)
             if reminder.eml_path:
@@ -309,3 +375,275 @@ def render_history_page() -> None:
         st.info("Le journal est vide.")
         return
     st.dataframe(pd.DataFrame(entries), hide_index=True)
+
+
+# --- Réponses des clients ---
+
+
+def _client_name(reminders: ReminderStore, key: str | None) -> str:
+    card = reminders.get_client(key) if key else None
+    return card.name if card else (key or "Client inconnu")
+
+
+def _default_installments(total, requested: int | None) -> int:
+    maximum = max_installments(total) if total else 2
+    return max(1, min(requested if requested and requested >= 2 else maximum, maximum))
+
+
+def _render_reply(reply: dict, reminders: ReminderStore, recovery_: RecoveryStore, source: InvoiceSource,
+                  api) -> None:
+    reply_id, kind = reply["id"], reply["proposed_action"]
+    with st.container(border=True):
+        st.subheader(f"{md_escape(_client_name(reminders, reply['client_key']))} — {INTENT_LABELS[reply['intent']]}")
+        st.caption(f"Reçue le {date_fr(date.fromisoformat(reply['received_at'][:10]))} · "
+                   f"de {md_escape(reply['sender'])} · objet : {md_escape(reply['subject'])}")
+        st.markdown(md_escape(reply["summary"]))
+        if reply["suspicious"]:
+            st.warning("Réponse suspecte (fraude possible) : vérifie l'expéditeur avant toute action.")
+        detail = f" jusqu'au {date_fr(reply['action_until'])}" if reply["action_until"] else ""
+        st.info(f"Action proposée : {ACTION_LABELS[kind]}{detail}")
+        with st.expander("Lire le message"):
+            st.text(reply["body"])
+        actions = st.container(horizontal=True, vertical_alignment="bottom")
+        count = None
+        if kind is ActionKind.PROPOSE_PLAN:
+            total = sum((i.amount for i in source.unpaid_of(reply["client_key"], today())), start=0)
+            count = actions.number_input(
+                "Nombre de mensualités", min_value=1, max_value=12, key=f"mensualites-{reply_id}",
+                value=_default_installments(total, reply["requested_installments"]),
+                help="4 mensualités au maximum, au moins 100 € chacune ; 2 fois si le total est inférieur à 200 €.")
+        if actions.button("Confirmer l'action", type="primary", key=f"confirmer-{reply_id}"):
+            errors = confirm_reply(reply_id, reminders, recovery_, source, outbox(), api, company(), today(),
+                                   installments=int(count) if count is not None else None)
+            if errors:
+                st.error("Action refusée : " + " ; ".join(md_escape(e) for e in errors))
+            else:
+                st.session_state["flash"] = ("success", f"Action appliquée : {ACTION_LABELS[kind]}.")
+                st.rerun()
+        if actions.button("Classer sans action", key=f"classer-{reply_id}"):
+            if dismiss_reply(reply_id, recovery_, today()):
+                reminders.log(None, "reponse_classee", {"reponse": reply_id})
+            st.rerun()
+
+
+def render_replies_page() -> None:
+    _flash()
+    source = _source_or_error()
+    if source is None:
+        return
+    reminders, recovery_, api = store(), recovery(), api_client()
+    if api is None:
+        st.warning(NO_API_KEY_REPLIES)
+    if st.button("Relever les réponses", type="primary", icon=":material/inbox:", key="relever-reponses"):
+        folder = inbox()
+        if not folder.is_dir():
+            st.error(f"Dossier de réception introuvable : {md_escape(str(folder))}. "
+                     "Vérifie AGENT\\_RELANCES\\_INBOX dans le fichier .env.")
+        else:
+            try:
+                ids = process_replies(folder, reminders, recovery_, source, api, company(), company_domain(), today())
+            except Exception:
+                log.exception("Relevé des réponses échoué")
+                st.error("Le relevé des réponses a échoué. Réessaie dans un instant.")
+            else:
+                st.success(f"{len(ids)} nouvelle(s) réponse(s) enregistrée(s).")
+    replies = recovery_.list_replies()
+    to_review = [r for r in replies if r["status"] is ReplyStatus.TO_REVIEW]
+    st.caption(f"{len(to_review)} réponse(s) à traiter")
+    if not to_review:
+        st.info("Aucune réponse à traiter. Clique sur « Relever les réponses ».")
+    for reply in to_review:
+        _render_reply(reply, reminders, recovery_, source, api)
+    others = [r for r in replies if r["status"] is not ReplyStatus.TO_REVIEW]
+    if others:
+        with st.expander(f"Réponses déjà traitées ou non rattachées ({len(others)})"):
+            for reply in others:
+                st.markdown(f"{date_fr(reply['created_on'])} · {REPLY_STATUS_LABELS[reply['status']]} · "
+                            f"{md_escape(_client_name(reminders, reply['client_key']))} · {md_escape(reply['summary'])}")
+                st.text(reply["body"])
+
+
+# --- Échéanciers ---
+
+
+def _last_contact(key: str, reminders: ReminderStore, recovery_: RecoveryStore) -> date | None:
+    dates = [d for plan in recovery_.list_plans() if plan.client_key == key
+             for items in recovery_.installment_reminders(plan.id).values() for _, d in items]
+    validated = reminders.last_contacts().get(key)
+    return max(dates + ([validated] if validated else []), default=None)
+
+
+def _due_installments(reminders: ReminderStore, recovery_: RecoveryStore, on: date) -> list[tuple[Plan, InstallmentDue]]:
+    """Relances de mensualités dues : une seule par client (la plus ancienne), hors clients en pause."""
+    holds = recovery_.active_holds(on)
+    result = []
+    for plan in recovery_.list_plans([PlanStatus.ACTIVE]):
+        if plan.client_key in holds:
+            continue
+        dues = installment_steps(plan, recovery_.installment_reminders(plan.id),
+                                 _last_contact(plan.client_key, reminders, recovery_), on)
+        if dues:
+            result.append((plan, min(dues, key=lambda d: d.number)))
+    return result
+
+
+def _dispute_proposals(recovery_: RecoveryStore, on: date) -> list[Plan]:
+    with_dispute = {d["client_key"] for d in recovery_.list_disputes()}
+    return [plan for plan in recovery_.list_plans([PlanStatus.ACTIVE])
+            if plan.client_key not in with_dispute and dispute_due(plan, recovery_.installment_reminders(plan.id), on)]
+
+
+def _installment_state(plan: Plan, installment) -> str:
+    if installment.received_on is not None:
+        return f"Reçue le {date_fr(installment.received_on)}"
+    if plan.status is not PlanStatus.ACTIVE or installment.due_date is None:
+        return "En attente d'accord" if plan.status is PlanStatus.PROPOSED else "—"
+    return f"En retard ({(today() - installment.due_date).days} j)" if installment.due_date < today() else "À venir"
+
+
+def _render_plan(plan: Plan, reminders: ReminderStore, recovery_: RecoveryStore, source: InvoiceSource) -> None:
+    with st.container(border=True):
+        st.subheader(f"{md_escape(_client_name(reminders, plan.client_key))} — échéancier "
+                     f"{reference('E', plan.id)}")
+        st.caption(f"{PLAN_STATUS_LABELS[plan.status]} · proposé le {date_fr(plan.proposed_on)} · "
+                   f"total {euros(plan.total)}")
+        st.metric("Reste dû", euros(plan.remaining))
+        st.dataframe(pd.DataFrame([{
+            "Mensualité": i.number, "Montant": euros(i.amount),
+            "Échéance": date_fr(i.due_date) if i.due_date else "à fixer", "Situation": _installment_state(plan, i),
+        } for i in plan.installments]), hide_index=True)
+        if plan.status not in (PlanStatus.PROPOSED, PlanStatus.ACTIVE):
+            return
+        actions = st.container(horizontal=True)
+        if plan.status is PlanStatus.ACTIVE:
+            for installment in plan.installments:
+                if installment.received_on is None and actions.button(
+                        f"Mensualité {installment.number} reçue", key=f"recu-{plan.id}-{installment.number}"):
+                    if recovery_.mark_received(plan.id, installment.number, today()):
+                        reminders.log(None, "mensualite_recue", {"echeancier": plan.id, "mensualite": installment.number})
+                    closed = refresh_plans(recovery_, source, today())
+                    if closed:
+                        st.session_state["flash"] = ("success", " ".join(md_escape(m) for m in closed))
+                    st.rerun()
+        if actions.button("Annuler l'échéancier", key=f"annuler-plan-{plan.id}"):
+            if recovery_.set_plan_status(plan.id, PlanStatus.CANCELLED, today()):
+                reminders.log(None, "echeancier_annule", {"echeancier": plan.id})
+            st.rerun()
+
+
+def _validate_installment_reminder(plan: Plan, due: InstallmentDue, client: Client, reminders: ReminderStore,
+                                   recovery_: RecoveryStore) -> None:
+    current = {(p.id, d.number, d.stage) for p, d in _due_installments(reminders, recovery_, today())}
+    if (plan.id, due.number, int(due.stage)) not in current:
+        st.session_state["flash"] = ("warning", "Cette relance n'est plus due (échéancier modifié, client en pause "
+                                                "ou délai non atteint).")
+        st.rerun()
+    draft = installment_reminder_draft(due, client, company())
+    problems = check_plan_draft(draft, [due.amount], None, [due.due_date], require_count=False)
+    if problems:
+        st.error("Dépôt refusé : " + " ; ".join(md_escape(p) for p in problems))
+        return
+    path = save_plan_eml(outbox(), plan.id, client, draft.subject, draft.body,
+                         f"_mensualite-{due.number}-palier-{int(due.stage)}")
+    if recovery_.record_installment_reminder(plan.id, due.number, int(due.stage), today(), path):
+        reminders.log(None, "relance_mensualite_validee", {"echeancier": plan.id, "mensualite": due.number,
+                                                           "palier": int(due.stage), "fichier": path})
+        st.session_state["flash"] = ("success", f"Relance de la mensualité {due.number} déposée pour "
+                                                f"{md_escape(client.name)}.")
+    else:
+        st.session_state["flash"] = ("warning", "Ce palier de relance était déjà enregistré.")
+    st.rerun()
+
+
+def _render_due_installments(reminders: ReminderStore, recovery_: RecoveryStore) -> None:
+    due_list = _due_installments(reminders, recovery_, today())
+    st.subheader("Relances de mensualités à valider")
+    if not due_list:
+        st.info("Aucune relance de mensualité due aujourd'hui.")
+    for plan, due in due_list:
+        client = reminders.get_client(plan.client_key)
+        with st.container(border=True):
+            st.markdown(f"**{md_escape(_client_name(reminders, plan.client_key))}** — mensualité {due.number} de "
+                        f"{euros(due.amount)}, échue le {date_fr(due.due_date)} ({due.days_late} j de retard) · "
+                        f"palier {int(due.stage)} : {STAGE_LABELS[due.stage]}")
+            if client is None or not client.complete:
+                st.warning("Fiche client incomplète : ajoute un email dans la page Clients avant de valider.")
+                continue
+            draft = installment_reminder_draft(due, client, company())
+            st.text(draft.subject)
+            st.text(draft.body)
+            if st.button("Valider et déposer", type="primary",
+                         key=f"valider-mensualite-{plan.id}-{due.number}-{int(due.stage)}"):
+                _validate_installment_reminder(plan, due, client, reminders, recovery_)
+
+
+def _open_dispute(key: str, reminders: ReminderStore, recovery_: RecoveryStore, source: InvoiceSource) -> None:
+    card = reminders.get_client(key)
+    if card is None:
+        st.error("Fiche client introuvable.")
+        return
+    try:
+        result = open_dispute(card, recovery_, reminders, source, dossiers_root(), lawyer_email(), company(), today(),
+                              factures_base_dir())
+    except ValueError as error:
+        st.error(md_escape(str(error)))
+        return
+    except Exception:
+        log.exception("Ouverture du contentieux échouée")
+        st.error("Le dossier de contentieux n'a pas pu être créé.")
+        return
+    text = f"Dossier de contentieux ouvert pour {md_escape(card.name)}."
+    if result.missing:
+        text += " Fichiers de factures absents : " + ", ".join(md_escape(m) for m in result.missing) + "."
+    st.session_state["flash"] = ("success", text, str(result.folder))
+    st.rerun()
+
+
+def _render_dispute_proposals(reminders: ReminderStore, recovery_: RecoveryStore, source: InvoiceSource) -> None:
+    for plan in _dispute_proposals(recovery_, today()):
+        name = _client_name(reminders, plan.client_key)
+        with st.container(border=True):
+            st.warning(f"Contentieux proposé pour {md_escape(name)} : trois relances de mensualité validées, "
+                       "sans paiement depuis au moins 7 jours.")
+            if st.button("Ouvrir le dossier de contentieux", key=f"contentieux-{plan.client_key}"):
+                _open_dispute(plan.client_key, reminders, recovery_, source)
+
+
+def render_plans_page() -> None:
+    _flash()
+    source = _source_or_error()
+    if source is None:
+        return
+    reminders, recovery_ = store(), recovery()
+    for message in refresh_plans(recovery_, source, today()):
+        st.success(md_escape(message))
+    _render_dispute_proposals(reminders, recovery_, source)
+    _render_due_installments(reminders, recovery_)
+    plans = recovery_.list_plans()
+    st.subheader("Échéanciers")
+    if not plans:
+        st.info("Aucun échéancier pour l'instant.")
+    for plan in plans:
+        _render_plan(plan, reminders, recovery_, source)
+
+
+# --- Contentieux ---
+
+
+def render_disputes_page() -> None:
+    _flash()
+    source = _source_or_error()
+    if source is None:
+        return
+    reminders, recovery_ = store(), recovery()
+    _render_dispute_proposals(reminders, recovery_, source)
+    disputes = recovery_.list_disputes()
+    if not disputes:
+        st.info("Aucun dossier de contentieux.")
+    for dispute in disputes:
+        with st.container(border=True):
+            st.subheader(f"{md_escape(_client_name(reminders, dispute['client_key']))} — "
+                         f"{date_fr(dispute['created_on'])}")
+            st.metric("Reste dû", euros(dispute["total_due"]))
+            st.caption("Dossier (récapitulatif PDF, factures, brouillon pour l'avocat) :")
+            st.code(dispute["folder"], language=None, wrap_lines=True)

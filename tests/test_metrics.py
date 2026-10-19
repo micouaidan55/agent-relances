@@ -41,3 +41,20 @@ def test_cost_and_fallback_rate_ignore_imported_history():
     board = dashboard(InvoiceSource(conn), store, TODAY)
     assert board.validated == 1 and board.pending == 1
     assert board.fallback_rate == 0.0 and abs(board.mean_cost_usd - 0.01) < 1e-9
+
+
+def test_dashboard_counts_plans_and_disputes():
+    from agent_relances.storage.recovery import RecoveryStore
+    conn, repo = factures_conn()
+    repo.add(issued("AL-1", amount="1000.00", due=date(2026, 10, 1)), "a.pdf")
+    db = connect()
+    recovery = RecoveryStore(db)
+    amounts = [Decimal("500.00"), Decimal("500.00")]
+    plan_id = recovery.create_plan("hotel des canuts", [1], Decimal("1000.00"), amounts, TODAY)
+    recovery.activate_plan(plan_id, TODAY)
+    recovery.mark_received(plan_id, 1, TODAY)
+    recovery.add_dispute("autre client", "dossier", Decimal("10"), TODAY)
+    board = dashboard(InvoiceSource(conn), ReminderStore(db), TODAY, recovery)
+    assert (board.plans_active, board.plans_remaining, board.disputes) == (1, Decimal("500.00"), 1)
+    empty = dashboard(InvoiceSource(conn), ReminderStore(connect()), TODAY)
+    assert (empty.plans_active, empty.plans_remaining, empty.disputes) == (0, Decimal("0"), 0)

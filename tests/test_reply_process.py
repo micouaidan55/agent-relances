@@ -288,3 +288,12 @@ def test_dismiss_does_not_touch_holds_and_acts_once(world):
     assert dismiss_reply(rid, world.recovery, TODAY) is False
     assert world.status(rid) is ReplyStatus.DISMISSED
     assert world.recovery.active_holds(TODAY) == {}
+
+
+def test_without_api_the_attached_reply_is_stored_for_a_human(world):
+    (world.inbox / "x.eml").write_bytes(eml())
+    ids = process_replies(world.inbox, world.reminders, world.recovery, world.source, None,
+                          "Atelier Lumière", "atelier.fr", TODAY)
+    stored = world.recovery.get_reply(ids[0])
+    assert stored["status"] is ReplyStatus.TO_REVIEW and stored["proposed_action"] is ActionKind.HUMAN
+    assert stored["cost_usd"] == 0

@@ -5,9 +5,10 @@ from datetime import date
 from decimal import Decimal
 from statistics import mean
 
-from agent_relances.models import DraftSource, ReminderStatus
+from agent_relances.models import DraftSource, PlanStatus, ReminderStatus
 from agent_relances.rules.schedule import InvoiceState
 from agent_relances.sources import InvoiceSource
+from agent_relances.storage.recovery import RecoveryStore
 from agent_relances.storage.repository import ReminderStore
 
 STAGE_BUCKETS = ["Pas encore relancée", "Palier 1 fait", "Palier 2 fait", "Palier 3 fait", "Chez un humain"]
@@ -26,9 +27,13 @@ class Dashboard:
     mean_days_to_payment: float | None = None
     mean_cost_usd: float = 0.0
     fallback_rate: float | None = None
+    plans_active: int = 0
+    plans_remaining: Decimal = Decimal("0")
+    disputes: int = 0
 
 
-def dashboard(source: InvoiceSource, store: ReminderStore, today: date) -> Dashboard:
+def dashboard(source: InvoiceSource, store: ReminderStore, today: date,
+              recovery: RecoveryStore | None = None) -> Dashboard:
     overdue = source.overdue(today)
     states = store.invoice_states()
     by_stage = {bucket: 0 for bucket in STAGE_BUCKETS}
@@ -46,6 +51,7 @@ def dashboard(source: InvoiceSource, store: ReminderStore, today: date) -> Dashb
     # ni l'historique importé.
     drafted = [r for r in reminders if r.body and r.origin == "app"]
     count = lambda status: sum(1 for r in reminders if r.status is status)  # noqa: E731
+    active_plans = recovery.list_plans([PlanStatus.ACTIVE]) if recovery else []
     return Dashboard(
         overdue_total=sum((i.amount for i in overdue), Decimal("0")),
         overdue_count=len(overdue),
@@ -58,4 +64,7 @@ def dashboard(source: InvoiceSource, store: ReminderStore, today: date) -> Dashb
         mean_days_to_payment=mean(days for _, days in recovered) if recovered else None,
         mean_cost_usd=mean(r.cost_usd for r in drafted) if drafted else 0.0,
         fallback_rate=(sum(1 for r in drafted if r.source is DraftSource.FALLBACK) / len(drafted)) if drafted else None,
+        plans_active=len(active_plans),
+        plans_remaining=sum((p.remaining for p in active_plans), Decimal("0")),
+        disputes=len(recovery.list_disputes()) if recovery else 0,
     )
