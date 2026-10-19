@@ -1,16 +1,19 @@
-from datetime import date
+import unicodedata
+from datetime import date, datetime
 from decimal import Decimal
 from email.message import EmailMessage
 
 import pytest
+from agent_emails.models import Email
+from agent_emails.parsing import parse_eml
 
 from agent_relances.models import Client, ReminderDraft
 from agent_relances.replies.matching import MatchResult, fetch_replies, match_reply
 from agent_relances.storage.db import connect
 from agent_relances.storage.recovery import RecoveryStore
 from agent_relances.storage.repository import ReminderStore
-from agent_emails.parsing import parse_eml
 from tests.factories import client, due_reminder
+from tests.test_recovery_store import add_reply
 
 TODAY = date(2026, 10, 16)
 
@@ -88,7 +91,6 @@ def test_fetch_replies_skips_known_replies(tmp_path, stores):
     reminders, recovery = stores
     (tmp_path / "b.eml").write_bytes(eml(message_id="<b@x>"))
     (email, match), = fetch_replies(tmp_path, reminders, recovery)
-    from tests.test_recovery_store import add_reply
     add_reply(recovery, message_id=email.message_id)
     assert fetch_replies(tmp_path, reminders, recovery) == []
 
@@ -103,3 +105,37 @@ def test_fetch_replies_keeps_unknown_reference_from_unknown_sender_unattached(tm
     (tmp_path / "d.eml").write_bytes(eml(subject="Re: [Réf. R-99999]", sender="x@autre.fr", message_id="<d@x>"))
     (email, match), = fetch_replies(tmp_path, reminders, recovery)
     assert match == MatchResult(None, None, None)
+
+
+def test_empty_sender_never_matches_a_card_without_email(stores):
+    reminders, recovery = stores
+    reminders.save_client(Client(name="Sans Email", email="", contact="", notes="", professional=True))
+    email = Email(message_id="<e@x>", sender_address="", subject="Bonjour", received_at=datetime(2026, 10, 15),
+                  body="Bonjour")
+    assert match_reply(email, reminders, recovery) == MatchResult(None, None, None)
+
+
+def test_reference_wins_over_a_sender_of_another_client(stores):
+    reminders, recovery = stores
+    reminders.save_client(Client(name="Café Rond", email="contact@cafe-rond.fr", contact="", notes="",
+                                 professional=True))
+    rid = reminder_id(reminders)
+    email = parse_eml(eml(subject=f"Re: Relance [Réf. R-{rid:05d}]", sender="contact@cafe-rond.fr"))
+    assert match_reply(email, reminders, recovery) == MatchResult("hotel des canuts", f"R-{rid:05d}", "reference")
+
+
+def test_first_reference_that_resolves_is_used(stores):
+    reminders, recovery = stores
+    rid = reminder_id(reminders)
+    email = parse_eml(eml(subject=f"Re: [Réf. R-99999] Re: [Réf. R-{rid:05d}]", sender="x@autre.fr"))
+    assert match_reply(email, reminders, recovery) == MatchResult("hotel des canuts", f"R-{rid:05d}", "reference")
+
+
+def test_decomposed_accent_in_the_subject_still_matches(stores):
+    reminders, recovery = stores
+    rid = reminder_id(reminders)
+    subject = unicodedata.normalize("NFD", f"Re: Relance [Réf. R-{rid:05d}]")
+    assert "Réf" not in subject
+    email = Email(message_id="<n@x>", sender_address="x@autre.fr", subject=subject,
+                  received_at=datetime(2026, 10, 15), body="Bonjour")
+    assert match_reply(email, reminders, recovery) == MatchResult("hotel des canuts", f"R-{rid:05d}", "reference")

@@ -3,6 +3,7 @@
 import logging
 import re
 import tempfile
+import unicodedata
 from dataclasses import dataclass
 from pathlib import Path
 
@@ -25,10 +26,15 @@ class MatchResult:
     method: str | None  # "reference", "expediteur" ou None
 
 
+def _subject(email: Email) -> str:
+    """Objet en forme NFC : un « é » décomposé (e + accent) par un client de messagerie reste reconnu."""
+    return unicodedata.normalize("NFC", email.subject or "")
+
+
 def match_reply(email: Email, reminders: ReminderStore, recovery: RecoveryStore) -> MatchResult:
-    """Référence R (relance) ou E (échéancier) d'abord ; une référence inconnue retombe sur l'expéditeur."""
-    found = REFERENCE.search(email.subject or "")
-    if found:
+    """Référence R (relance) ou E (échéancier) d'abord, la première de l'objet qui désigne une relance ou un
+    échéancier connu ; sans référence connue, retombe sur l'expéditeur."""
+    for found in REFERENCE.finditer(_subject(email)):
         kind, number = found.group(1), int(found.group(2))
         if kind == "R":
             reminder = reminders.get(number)
@@ -54,4 +60,4 @@ def fetch_replies(inbox: Path, reminders: ReminderStore, recovery: RecoveryStore
         log.warning("Email illisible ignoré (%s) : %s", name, error)
     matched = [(email, match_reply(email, reminders, recovery)) for email in result.emails]
     return [(email, match) for email, match in matched
-            if match.client_key is not None or REFERENCE.search(email.subject or "")]
+            if match.client_key is not None or REFERENCE.search(_subject(email))]
