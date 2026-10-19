@@ -158,9 +158,23 @@ def check_draft(draft: ReminderDraft, due: DueReminder) -> list[str]:
     return problems
 
 
+_COUNT_WORDS = {"un": 1, "une": 1, "deux": 2, "trois": 3, "quatre": 4, "cinq": 5, "six": 6, "sept": 7, "huit": 8,
+                "neuf": 9, "dix": 10, "onze": 11, "douze": 12}
+_NUMBER_WORD = rf"(?:\d+|{'|'.join(sorted(_COUNT_WORDS, key=len, reverse=True))})"
+_COUNT_STATEMENT = re.compile(rf"(?<![\w,.]){{n}}\s+(?:mensualites|versements|echeances|paiements|fois)(?!\w)"
+                              .replace("{n}", f"({_NUMBER_WORD})"))
+_MONTHS_STATEMENT = re.compile(rf"(?<![\w,.])({_NUMBER_WORD})\s+mois(?!\w)")
+
+
+def _as_int(token: str) -> int:
+    return int(token) if token.isdigit() else _COUNT_WORDS[token]
+
+
 def check_plan_draft(draft: ReminderDraft, amounts: list[Decimal], total: Decimal | None,
-                     dates: list[date] | None, invoice_numbers: Sequence[str] = ()) -> list[str]:
-    """Montants = exactement les mensualités et le total ; dates = exactement celles de l'échéancier, ou aucune."""
+                     dates: list[date] | None, invoice_numbers: Sequence[str] = (),
+                     requested: int | None = None) -> list[str]:
+    """Montants = exactement les mensualités et le total ; nombre de mensualités annoncé = exact ; dates = exactement
+    celles de l'échéancier, ou aucune. « N mois » n'est admis que pour le nombre de mensualités ou la demande du client."""
     text = f"{draft.subject}\n{draft.body}".translate(_SPACES)
     for number in invoice_numbers:   # les numéros de facture contiennent des chiffres et des « / » : on les retire
         text = _invoice_pattern(number).sub(" ", text)
@@ -170,6 +184,15 @@ def check_plan_draft(draft: ReminderDraft, amounts: list[Decimal], total: Decima
     problems = [f"Montant absent : {_amount_label(a)}" for a in sorted(expected_amounts - found_amounts)]
     problems += [f"Montant non prévu : {_amount_label(a)}" for a in sorted(found_amounts - expected_amounts)]
     problems += [f"Pourcentage non prévu : {m[0].strip()}" for m in _PERCENT.finditer(text)]
+
+    plain = _plain(text)
+    stated = [_as_int(m[1]) for m in _COUNT_STATEMENT.finditer(plain)]
+    if len(amounts) not in stated:
+        problems.append(f"Nombre de mensualités non annoncé : {len(amounts)}")
+    problems += [f"Nombre de mensualités faux : {n} au lieu de {len(amounts)}" for n in sorted(set(stated) - {len(amounts)})]
+    allowed_months = {len(amounts)} | ({requested} if requested else set())
+    problems += [f"Durée non prévue : {n} mois" for n in sorted({_as_int(m[1]) for m in _MONTHS_STATEMENT.finditer(plain)}
+                                                                 - allowed_months)]
 
     found_dates = dates_in(text)
     expected_dates = dates or []

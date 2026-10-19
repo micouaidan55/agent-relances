@@ -38,7 +38,7 @@ def mail(body, subject="Votre échéancier"):
 
 GOOD_PROPOSAL = mail("Bonjour,\nVoici 3 mensualités de 250,00 € pour un total de 750,00 €. La première est due "
                      "30 jours après votre accord, puis chaque mois.\nCordialement")
-GOOD_CONFIRM = mail("Bonjour,\n- 15/11/2026 : 250,00 €\n- 15/12/2026 : 250,00 €\n- 15/01/2027 : 250,00 €\n"
+GOOD_CONFIRM = mail("Bonjour,\nEn 3 mensualités :\n- 15/11/2026 : 250,00 €\n- 15/12/2026 : 250,00 €\n- 15/01/2027 : 250,00 €\n"
                     "Total : 750,00 €.")
 
 
@@ -57,10 +57,31 @@ def test_wrong_amount_is_refused():
     assert check(mail("3 mensualités de 260,00 €, total 750,00 €."))
 
 
-def test_forgotten_installment_amount_is_refused():
-    amounts = [D("300.00"), D("300.00"), D("150.00")]
-    problems = check(mail("2 mensualités de 300,00 €, total 750,00 €."), amounts=amounts)
-    assert any("150,00 €" in p for p in problems)
+def test_forgotten_installment_is_refused_by_the_count():
+    problems = check(mail("2 mensualités de 250,00 €, total 750,00 €."))
+    assert any("2 au lieu de 3" in p for p in problems)
+
+
+def test_missing_count_statement_is_refused():
+    assert any("non annoncé" in p for p in check(mail("Des versements de 250,00 €, total 750,00 €.")))
+
+
+def test_count_in_words_is_accepted_and_accent_insensitive():
+    assert check(mail("Trois Mensualités de 250,00 €, total 750,00 €.")) == []
+    assert check(mail("Deux mensualités de 250,00 €, total 750,00 €."))
+
+
+def test_count_with_uneven_last_installment():
+    amounts = [D("250.00")] * 3 + [D("250.01")]
+    mail4 = "4 mensualités : 3 de 250,00 € et 1 de 250,01 €, total 1 000,01 €."
+    assert check(mail(mail4), amounts=amounts, total=D("1000.01")) == []
+    assert check(mail(mail4.replace("4 mensualités", "3 mensualités")), amounts=amounts, total=D("1000.01"))
+
+
+def test_wrong_requested_months_are_refused():
+    body = "Vous nous demandiez 12 mois ; 3 mensualités de 250,00 €, total 750,00 €."
+    assert any("12 mois" in p for p in check(mail(body), requested=6))
+    assert check(mail(body)) != []
 
 
 def test_invented_fifth_installment_is_refused():
@@ -80,12 +101,12 @@ def test_missing_date_is_refused():
 
 
 def test_dates_in_words_are_accepted():
-    body = "250,00 € le 15 novembre 2026, le 15 décembre 2026 et le 15 janvier 2027. Total 750,00 €."
+    body = "3 mensualités de 250,00 € le 15 novembre 2026, le 15 décembre 2026 et le 15 janvier 2027. Total 750,00 €."
     assert check(mail(body), DATES) == []
 
 
 def test_dates_without_year_are_accepted():
-    assert check(mail("250,00 € : 15/11, 15/12 et 15/01. Total 750,00 €."), DATES) == []
+    assert check(mail("3 mensualités de 250,00 € : 15/11, 15/12 et 15/01. Total 750,00 €."), DATES) == []
 
 
 def test_date_in_a_proposal_without_dates_is_refused():
@@ -102,7 +123,8 @@ def test_thirty_days_is_neither_amount_nor_date():
 
 
 def test_requested_months_are_accepted():
-    assert check(mail("Vous nous demandiez 6 mois ; nous proposons 3 mensualités de 250,00 €, total 750,00 €.")) == []
+    body = "Vous nous demandiez 6 mois ; nous proposons 3 mensualités de 250,00 €, total 750,00 €."
+    assert check(mail(body), requested=6) == []
 
 
 def test_invoice_numbers_are_not_amounts_or_dates():
@@ -129,7 +151,7 @@ def test_fallbacks_always_pass_the_checker(total, count, requested):
     plan = make_plan(total, count)
     amounts = [i.amount for i in plan.installments]
     proposal = fallback_proposal(plan, client(), "Atelier Lumière SAS", requested)
-    assert check_plan_draft(proposal, amounts, plan.total, None) == []
+    assert check_plan_draft(proposal, amounts, plan.total, None, requested=requested) == []
     active = make_plan(total, count, active=True)
     confirmation = fallback_confirmation(active, client(), "Atelier Lumière SAS")
     assert check_plan_draft(confirmation, amounts, plan.total, [i.due_date for i in active.installments]) == []
@@ -162,7 +184,7 @@ def test_proposal_falls_back_after_two_bad_drafts():
     api = FakeClient([bad, bad])
     draft, source, problems, _ = proposal_draft(api, make_plan(), client(), "A", 6)
     assert source is DraftSource.FALLBACK and problems
-    assert check_plan_draft(draft, AMOUNTS, D("750.00"), None) == []
+    assert check_plan_draft(draft, AMOUNTS, D("750.00"), None, requested=6) == []
 
 
 def test_proposal_without_api_uses_fallback():
@@ -196,7 +218,7 @@ def test_proposal_refuses_a_plan_outside_the_rule():
 
 def test_confirmation_carries_dates_and_reference():
     api = FakeClient([reply(GOOD_CONFIRM)])
-    draft, source, problems, _ = confirmation_draft(api, make_plan(active=True, ), client(), "A")
+    draft, source, problems, _ = confirmation_draft(api, make_plan(active=True), client(), "A")
     assert source is DraftSource.MODEL and problems == [] and draft.subject.endswith("[Réf. E-00007]")
     assert "15/11/2026" in api.messages.calls[0]["messages"][0]["content"]
 
@@ -242,6 +264,17 @@ def test_deposit_refuses_a_draft_that_does_not_match_the_plan(tmp_path):
 def test_deposit_checks_dates_of_an_active_plan(tmp_path):
     with pytest.raises(PlanRuleError):
         deposit_plan_draft(tmp_path, make_plan(active=True), client(), GOOD_PROPOSAL)   # sans les dates
+
+
+def test_deposit_accepts_requested_months(tmp_path):
+    body = "Vous nous demandiez 6 mois ; 3 mensualités de 250,00 €, total 750,00 €."
+    deposit_plan_draft(tmp_path, make_plan(), client(), mail(body), requested=6)
+
+
+def test_retry_message_names_the_mail_kind():
+    api = FakeClient([reply(mail("2 mensualités de 250,00 €, total 750,00 €.")), reply(GOOD_PROPOSAL)])
+    proposal_draft(api, make_plan(), client(), "A", None)
+    assert "Ton mail de proposition précédent" in api.messages.calls[1]["messages"][0]["content"]
 
 
 def test_deposit_with_invoice_numbers_in_text(tmp_path):

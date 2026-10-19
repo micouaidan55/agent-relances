@@ -23,7 +23,7 @@ Ton demandé :
 - ferme : sérieux, on souligne la durée du retard et les relances déjà faites, et on demande un règlement rapide."""
 
 
-def _safe(text: str) -> str:
+def safe_text(text: str) -> str:
     """Les textes saisis par l'utilisateur ne peuvent ni ouvrir ou fermer le bloc de faits, ni forger une ligne de faits."""
     return " ".join(text.replace("<", "‹").replace(">", "›").split())
 
@@ -33,15 +33,15 @@ def facts_block(due: DueReminder, company: str) -> str:
     lines = [
         "<faits>",
         f"Entreprise qui relance : {company}",
-        f"Client : {_safe(client.name)}",
-        f"Contact : {_safe(client.contact) or 'non renseigné'}",
+        f"Client : {safe_text(client.name)}",
+        f"Contact : {safe_text(client.contact) or 'non renseigné'}",
         f"Type de client : {'professionnel' if client.professional else 'particulier'}",
-        f"Notes sur le client : {_safe(client.notes) or 'aucune'}",
+        f"Notes sur le client : {safe_text(client.notes) or 'aucune'}",
         f"Palier : {int(due.stage)} — {STAGE_LABELS[due.stage]}",
         f"Ton demandé : {due.tone.value}",
         "Factures :",
     ]
-    lines += [f"- n° {_safe(i.number)} : {euros(i.amount)} TTC, échéance {date_fr(i.due_date)}, {i.days_late} jours de "
+    lines += [f"- n° {safe_text(i.number)} : {euros(i.amount)} TTC, échéance {date_fr(i.due_date)}, {i.days_late} jours de "
               f"retard, relances déjà faites : {due.invoice_stages.get(i.invoice_id, int(due.stage)) - 1}"
               for i in due.invoices]
     if len(due.invoices) > 1:
@@ -49,6 +49,9 @@ def facts_block(due: DueReminder, company: str) -> str:
     lines.append(f"Mention légale à reproduire : {LEGAL_NOTICE}" if due.legal_notice else "Mention légale : aucune")
     lines.append("</faits>")
     return "\n".join(lines)
+
+
+_safe = safe_text  # ancien nom, conservé
 
 
 def write_draft(client, due: DueReminder, company: str, model: str = WRITER_MODEL,

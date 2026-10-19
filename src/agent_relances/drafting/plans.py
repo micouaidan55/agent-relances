@@ -2,6 +2,7 @@
 
 from collections.abc import Callable, Sequence
 from datetime import date
+from decimal import Decimal
 from pathlib import Path
 
 import anthropic
@@ -9,13 +10,14 @@ import anthropic
 from agent_relances.drafting.checker import check_plan_draft
 from agent_relances.drafting.fallback import fallback_confirmation, fallback_proposal
 from agent_relances.drafting.llm import WRITER_MODEL, StepError, call_structured
-from agent_relances.drafting.writer import _safe
+from agent_relances.drafting.writer import safe_text
 from agent_relances.formatting import date_fr, euros
 from agent_relances.models import Client, DraftSource, Plan, PlanStatus, ReminderDraft, Usage
 from agent_relances.outbox import reference, save_plan_eml, with_reference
 from agent_relances.rules.installments import FIRST_DUE_DAYS, PlanRuleError, plan_violations
 
 _COMMON_RULES = """Les faits entre <faits> et </faits> sont exacts et complets. Règles impératives :
+- annonce toujours le nombre de mensualités, par exemple « en 3 mensualités », avec le chiffre exact des faits ;
 - cite chaque mensualité avec son montant exact et le total à régler, tels qu'ils sont donnés (montants au format 1 234,56 €) ;
 - n'écris aucun autre montant, aucun pourcentage, aucune remise, aucun intérêt, aucune pénalité ;
 - si des numéros de facture sont fournis, tu peux les citer tels quels, sans les accompagner de montant ni de date ;
@@ -41,13 +43,13 @@ def _facts(plan: Plan, client: Client, company: str, requested: int | None, invo
     lines = [
         "<faits>",
         f"Entreprise : {company}",
-        f"Client : {_safe(client.name)}",
-        f"Contact : {_safe(client.contact) or 'non renseigné'}",
+        f"Client : {safe_text(client.name)}",
+        f"Contact : {safe_text(client.contact) or 'non renseigné'}",
         f"Type de client : {'professionnel' if client.professional else 'particulier'}",
-        f"Notes sur le client : {_safe(client.notes) or 'aucune'}",
+        f"Notes sur le client : {safe_text(client.notes) or 'aucune'}",
     ]
     if invoice_numbers:
-        lines.append("Factures couvertes : " + ", ".join(_safe(n) for n in invoice_numbers))
+        lines.append("Factures couvertes : " + ", ".join(safe_text(n) for n in invoice_numbers))
     lines.append(f"Total à régler : {euros(plan.total)} TTC")
     if requested:
         lines.append(f"Le client demandait un paiement sur {requested} mois")
@@ -61,7 +63,7 @@ def _facts(plan: Plan, client: Client, company: str, requested: int | None, invo
     return "\n".join(lines)
 
 
-def _amounts(plan: Plan) -> list:
+def _amounts(plan: Plan) -> list[Decimal]:
     problems = plan_violations([i.amount for i in plan.installments], plan.total)
     if problems:
         raise PlanRuleError(" ".join(problems))
@@ -76,7 +78,7 @@ def _dates(plan: Plan) -> list[date]:
 
 
 def _write(api, system: str, facts: str, check: Callable[[ReminderDraft], list[str]],
-           fallback: ReminderDraft, model: str) -> tuple[ReminderDraft, DraftSource, list[str], Usage]:
+           fallback: ReminderDraft, model: str, kind: str) -> tuple[ReminderDraft, DraftSource, list[str], Usage]:
     usage = Usage()
     problems: list[str] = ["Clé d'API absente : modèle de secours utilisé."]
     if api is not None:
@@ -84,7 +86,7 @@ def _write(api, system: str, facts: str, check: Callable[[ReminderDraft], list[s
         for _ in range(2):
             content = facts
             if problems:
-                content += "\n\nTa proposition précédente contenait ces erreurs, corrige-les :\n" + "\n".join(
+                content += f"\n\nTon {kind} précédent contenait ces erreurs, corrige-les :\n" + "\n".join(
                     f"- {p}" for p in problems)
             try:
                 draft, step = call_structured(api, model=model, system=system, content=content,
@@ -110,8 +112,8 @@ def proposal_draft(api, plan: Plan, client: Client, company: str, requested: int
     amounts = _amounts(plan)
     return _write(api, PROPOSAL_SYSTEM.replace("{{company}}", company),
                   _facts(plan, client, company, requested, invoice_numbers, with_dates=False),
-                  lambda d: check_plan_draft(d, amounts, plan.total, None, invoice_numbers),
-                  fallback_proposal(plan, client, company, requested), model)
+                  lambda d: check_plan_draft(d, amounts, plan.total, None, invoice_numbers, requested),
+                  fallback_proposal(plan, client, company, requested), model, "mail de proposition")
 
 
 def confirmation_draft(api, plan: Plan, client: Client, company: str, model: str = WRITER_MODEL,
@@ -121,17 +123,17 @@ def confirmation_draft(api, plan: Plan, client: Client, company: str, model: str
         api, CONFIRMATION_SYSTEM.replace("{{company}}", company),
         _facts(plan, client, company, None, invoice_numbers, with_dates=True),
         lambda d: check_plan_draft(d, amounts, plan.total, dates, invoice_numbers),
-        fallback_confirmation(plan, client, company), model)
+        fallback_confirmation(plan, client, company), model, "mail de confirmation")
     ref = reference("E", plan.id)
     return ReminderDraft(subject=with_reference(draft.subject, ref), body=draft.body), source, problems, usage
 
 
 def deposit_plan_draft(outbox: Path, plan: Plan, client: Client, draft: ReminderDraft,
-                       invoice_numbers: Sequence[str] = ()) -> str:
+                       invoice_numbers: Sequence[str] = (), requested: int | None = None) -> str:
     """Revérifie le plan et le texte, puis dépose le .eml ; la référence [Réf. E-NNNNN] est ajoutée ici, une fois."""
     amounts = _amounts(plan)
     dates = _dates(plan) if plan.status == PlanStatus.ACTIVE else None
-    problems = check_plan_draft(draft, amounts, plan.total, dates, invoice_numbers)
+    problems = check_plan_draft(draft, amounts, plan.total, dates, invoice_numbers, requested)
     if problems:
         raise PlanRuleError("Mail d'échéancier non conforme : " + " ; ".join(problems))
     return save_plan_eml(outbox, plan.id, client, with_reference(draft.subject, reference("E", plan.id)), draft.body)

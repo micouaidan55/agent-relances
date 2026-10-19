@@ -76,7 +76,8 @@ def fallback_proposal(plan: Plan, client: Client, company: str, requested: int |
 def fallback_confirmation(plan: Plan, client: Client, company: str) -> ReminderDraft:
     paragraphs = [
         f"Bonjour {client.contact}," if client.contact else "Bonjour,",
-        f"Nous vous confirmons l'échéancier convenu pour le règlement de {euros(plan.total)} TTC :\n"
+        f"Nous vous confirmons l'échéancier convenu pour le règlement de {euros(plan.total)} TTC en "
+        f"{len(plan.installments)} mensualités :\n"
         + "\n".join(_plan_lines(plan)),
         "Nous vous remercions par avance.",
         f"Cordialement,\n{company}",
