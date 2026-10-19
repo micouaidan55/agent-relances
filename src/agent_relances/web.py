@@ -450,19 +450,25 @@ def _render_reply(reply: dict, reminders: ReminderStore, recovery_: RecoveryStor
         with st.expander("Lire le message"):
             st.text(reply["body"])
         actions = st.container(horizontal=True, vertical_alignment="bottom")
-        count = None
+        count, reason = None, None   # le motif n'est transmis que si la case de dérogation est cochée
         if kind is ActionKind.PROPOSE_PLAN:
             total = sum((i.amount for i in source.unpaid_of(reply["client_key"], today())), start=0)
             count = actions.number_input(
                 "Nombre de mensualités", min_value=1, max_value=12, key=f"mensualites-{reply_id}",
                 value=_default_installments(total, reply["requested_installments"]),
-                help="4 mensualités au maximum, au moins 100 € chacune ; 2 fois si le total est inférieur à 200 €.")
+                help="4 mensualités au maximum, au moins 100 € chacune ; 2 fois si le total est inférieur à 200 €. "
+                     "Au-delà de 4 (jusqu'à 12) : dérogation exceptionnelle avec un motif écrit.")
+            if actions.checkbox("Dérogation exceptionnelle", key=f"derogation-{reply_id}",
+                                help="Seul un humain peut déroger : jusqu'à 12 mensualités, 100 € au moins chacune, "
+                                     "motif obligatoire, conservé sur l'échéancier et au journal."):
+                reason = actions.text_input("Motif de la dérogation", key=f"motif-{reply_id}")
         # Règle délibérée : « à traiter par un humain » suspend les relances du client sans date de fin, jusqu'à ce
         # que l'humain lève la pause (page Clients) ; le libellé le dit.
         label = HUMAN_CONFIRM_LABEL if kind is ActionKind.HUMAN else "Confirmer l'action"
         if actions.button(label, type="primary", key=f"confirmer-{reply_id}"):
             errors = confirm_reply(reply_id, reminders, recovery_, source, outbox(), api, company(), today(),
-                                   installments=int(count) if count is not None else None)
+                                   installments=int(count) if count is not None else None,
+                                   exception_reason=reason)
             if errors:
                 st.error("Action refusée : " + " ; ".join(md_escape(e) for e in errors))
             else:
@@ -581,6 +587,8 @@ def _render_plan(plan: Plan, reminders: ReminderStore, recovery_: RecoveryStore,
                      f"{reference('E', plan.id)}")
         st.caption(f"{PLAN_STATUS_LABELS[plan.status]} · proposé le {date_fr(plan.proposed_on)} · "
                    f"total {euros(plan.total)}")
+        if plan.exception_reason:
+            st.caption(f"Dérogation : {md_escape(plan.exception_reason)}")
         st.metric("Reste dû", euros(plan.remaining))
         st.dataframe(pd.DataFrame([{
             "Mensualité": i.number, "Montant": euros(i.amount),

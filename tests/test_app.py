@@ -245,15 +245,71 @@ def test_dismissing_a_reply_changes_nothing_else(env, recovery):
     assert recovery.active_holds(TODAY) == {}
 
 
-def test_imposing_five_installments_is_refused_with_the_reason(env, recovery):
+def test_imposing_six_installments_without_derogation_is_refused_with_the_reason(env, recovery):
     reply_id = add_reply(recovery, ReplyIntent.PLAN_REQUEST, ActionKind.PROPOSE_PLAN, None)
     at = run_app("app_pages/reponses.py")
     assert at.number_input(key=f"mensualites-{reply_id}").value == 4          # la proposition par défaut
-    at.number_input(key=f"mensualites-{reply_id}").set_value(5).run()
+    at.number_input(key=f"mensualites-{reply_id}").set_value(6).run()
+    assert not at.checkbox(key=f"derogation-{reply_id}").value
     at.button(key=f"confirmer-{reply_id}").click().run()
-    assert any("5 mensualités refusées" in e.value and "Trop de versements" in e.value for e in at.error)
+    assert any("6 mensualités refusées" in e.value and "dérogation" in e.value for e in at.error)
     assert recovery.list_plans() == []
     assert recovery.get_reply(reply_id)["status"] is ReplyStatus.TO_REVIEW
+
+
+def test_derogation_checked_without_motif_is_refused(env, recovery):
+    reply_id = add_reply(recovery, ReplyIntent.PLAN_REQUEST, ActionKind.PROPOSE_PLAN, None)
+    at = run_app("app_pages/reponses.py")
+    at.number_input(key=f"mensualites-{reply_id}").set_value(6).run()
+    at.checkbox(key=f"derogation-{reply_id}").check().run()
+    at.text_input(key=f"motif-{reply_id}").set_value("   ").run()
+    at.button(key=f"confirmer-{reply_id}").click().run()
+    assert any("dérogation" in e.value and "motif" in e.value for e in at.error)
+    assert recovery.list_plans() == []
+
+
+def test_six_installments_with_a_derogation_motif_create_the_plan(env, recovery):
+    tmp_path, store = env
+    reply_id = add_reply(recovery, ReplyIntent.PLAN_REQUEST, ActionKind.PROPOSE_PLAN, None)
+    at = run_app("app_pages/reponses.py")
+    at.number_input(key=f"mensualites-{reply_id}").set_value(6).run()
+    at.checkbox(key=f"derogation-{reply_id}").check().run()
+    at.text_input(key=f"motif-{reply_id}").set_value("Client en difficulté").run()
+    at.button(key=f"confirmer-{reply_id}").click().run()
+    assert not at.exception and not at.error
+    [plan] = recovery.list_plans()
+    assert len(plan.installments) == 6 and plan.exception_reason == "Client en difficulté"
+    assert list((tmp_path / "deposees").glob("echeancier_*.eml"))
+    assert any(e["detail"].get("derogation") == "Client en difficulté" for e in store.list_log())
+
+
+def test_thirteen_installments_are_impossible_even_with_a_motif(env, recovery):
+    # Le champ plafonne à 12 : 13 n'est pas saisissable (AppTest ramène la valeur au maximum du champ) ; le refus de 13
+    # par le code, motif ou non, est testé directement sur confirm_reply (test_reply_process.py).
+    reply_id = add_reply(recovery, ReplyIntent.PLAN_REQUEST, ActionKind.PROPOSE_PLAN, None)
+    at = run_app("app_pages/reponses.py")
+    assert at.number_input(key=f"mensualites-{reply_id}").max == 12
+    at.number_input(key=f"mensualites-{reply_id}").set_value(13).run()
+    at.checkbox(key=f"derogation-{reply_id}").check().run()
+    at.text_input(key=f"motif-{reply_id}").set_value("Client en difficulté").run()
+    at.button(key=f"confirmer-{reply_id}").click().run()
+    assert all(len(plan.installments) <= 12 for plan in recovery.list_plans())
+
+
+def test_plans_page_shows_the_derogation_motif_escaped(env, recovery):
+    total = Decimal("1200.00")
+    recovery.create_plan(KEY, [1], total, plan_amounts(total, 6, exception=True), TODAY,
+                         exception_reason="**urgent** [x](http://evil.example)")
+    at = run_app("app_pages/echeanciers.py")
+    text = " ".join(m.value for m in at.markdown) + " ".join(c.value for c in at.caption)
+    assert "Dérogation : " + md_escape("**urgent** [x](http://evil.example)") in text
+    assert "[x](http" not in text
+
+
+def test_plans_page_without_derogation_shows_none(env, recovery):
+    active_plan(recovery)
+    at = run_app("app_pages/echeanciers.py")
+    assert "Dérogation" not in " ".join(m.value for m in at.markdown) + " ".join(c.value for c in at.caption)
 
 
 def test_default_installments_create_a_proposed_plan(env, recovery):
