@@ -131,7 +131,9 @@ Relancer ne suffit pas : le client répond (« je paie vendredi », « pouvez-vo
 - montants égaux arrondis au centime, la dernière mensualité absorbe l'écart ;
 - l'échéancier couvre toutes les factures impayées du client, un seul à la fois par client.
 
-Le modèle ne calcule jamais rien : la règle est calculée et vérifiée par le code, revérifiée avant tout enregistrement ou dépôt, et un nombre de mensualités hors règle (5, ou 3 pour 250 €) est refusé avec sa raison. Un test exhaustif couvre 1 427 988 cas (chaque total au centime de 0,02 € à 1 000 €, puis à l'euro jusqu'à 20 000 €, pour chaque demande de 2 à 12 mensualités ou sans nombre) : la règle est respectée et le nombre retenu est celui demandé s'il est valide, sinon le maximum.
+**Dérogation exceptionnelle.** Un humain peut, dans un cas exceptionnel, dépasser les 4 mensualités, jusqu'à 12 au plus : le minimum de 100 € par mensualité reste obligatoire (maximum = min(12, total ÷ 100)) et un motif écrit est obligatoire (un motif vide ou blanc n'ouvre aucune dérogation). Seul un humain la déclenche, depuis la page Réponses (case « Dérogation exceptionnelle » et motif) : Claude et le code ne proposent jamais plus de 4 mensualités. Le motif est conservé sur l'échéancier, affiché sur la page Échéanciers, repris dans le dossier de contentieux et inscrit au journal.
+
+Le modèle ne calcule jamais rien : la règle est calculée et vérifiée par le code, revérifiée avant tout enregistrement ou dépôt, et un nombre de mensualités hors règle (5 sans dérogation, ou 3 pour 250 €) est refusé avec sa raison. Un test exhaustif couvre 1 427 988 cas (chaque total au centime de 0,02 € à 1 000 €, puis à l'euro jusqu'à 20 000 €, pour chaque demande de 2 à 12 mensualités ou sans nombre) : la règle est respectée et le nombre retenu est celui demandé s'il est valide, sinon le maximum.
 
 ### Suivi d'un échéancier
 

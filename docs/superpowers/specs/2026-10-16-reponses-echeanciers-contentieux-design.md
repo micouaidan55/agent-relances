@@ -143,3 +143,7 @@ Ajouts à l'application agent-relances :
 - La forme du PDF de recouvrement et du mail à l'avocat.
 - Le contenu exact des prompts, à condition de respecter §4.4 et la neutralisation.
 - La génération du jeu d'évaluation (cas pièges : réponse polie mais contestataire, échéancier demandé en 6 fois, date écrite en toutes lettres, réponse d'une autre adresse que la fiche, réponse frauduleuse avec nouveau RIB).
+
+## Évolution : dérogation exceptionnelle
+
+La règle d'échéancier admet une dérogation humaine au plafond de 4 mensualités : jusqu'à 12 mensualités (`EXCEPTION_MAX_INSTALLMENTS`), le minimum de 100 € par mensualité restant obligatoire (maximum = min(12, ⌊total ÷ 100⌋), et 2 en dessous de 200 €). Un motif écrit non vide est obligatoire ; seul un humain la déclenche (page Réponses), Claude et le code ne proposent jamais plus de 4. Le motif est stocké sur l'échéancier (`plans.exception_reason`), journalisé, affiché sur la page Échéanciers et repris dans le dossier de contentieux ; chaque revérification du plan (brouillons, dépôt, activation) applique la dérogation si, et seulement si, le motif existe.
