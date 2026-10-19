@@ -38,6 +38,10 @@ CONFIRMATION_SYSTEM = """Tu rédiges, pour l'entreprise « {{company}} », le ma
 - liste chaque mensualité avec sa date d'échéance, écrite au format jj/mm/aaaa exactement comme dans les faits, et aucune autre date."""
 
 
+PROPOSAL_SUFFIX = "_proposition"
+CONFIRMATION_SUFFIX = "_confirmation"
+
+
 def _facts(plan: Plan, client: Client, company: str, requested: int | None, invoice_numbers: Sequence[str],
            with_dates: bool) -> str:
     lines = [
@@ -136,4 +140,6 @@ def deposit_plan_draft(outbox: Path, plan: Plan, client: Client, draft: Reminder
     problems = check_plan_draft(draft, amounts, plan.total, dates, invoice_numbers, requested)
     if problems:
         raise PlanRuleError("Mail d'échéancier non conforme : " + " ; ".join(problems))
-    return save_plan_eml(outbox, plan.id, client, with_reference(draft.subject, reference("E", plan.id)), draft.body)
+    suffix = CONFIRMATION_SUFFIX if plan.status == PlanStatus.ACTIVE else PROPOSAL_SUFFIX
+    return save_plan_eml(outbox, plan.id, client, with_reference(draft.subject, reference("E", plan.id)), draft.body,
+                         suffix)

@@ -1,5 +1,6 @@
 """Lecture seule des factures émises et des paiements enregistrés par agent-factures."""
 
+import logging
 import sqlite3
 from datetime import date
 from decimal import Decimal
@@ -9,6 +10,9 @@ from agent_factures.extraction.models import Direction
 from agent_factures.storage.repository import InvoiceRepository
 
 from agent_relances.models import OverdueInvoice, PaymentRecord, client_key
+
+
+log = logging.getLogger(__name__)
 
 
 class FacturesSourceError(RuntimeError):
@@ -49,14 +53,21 @@ class InvoiceSource:
     def unpaid_of(self, client_key_: str, today: date) -> list[OverdueInvoice]:
         """Toutes les factures impayées d'un client, échues ou non (`days_late` ≤ 0 si pas encore échue)."""
         wanted = client_key(client_key_)
-        return [
-            OverdueInvoice(invoice_id=stored.id, number=stored.invoice.number,
-                           customer=(stored.invoice.customer or "").strip(), amount=stored.invoice.amount_incl_tax,
-                           issue_date=stored.invoice.issue_date, due_date=stored.invoice.due_date,
-                           days_late=(today - stored.invoice.due_date).days)
-            for stored in self._repo.list_unpaid(Direction.ISSUED)
-            if stored.invoice.due_date is not None and client_key(stored.invoice.customer or "") == wanted
-        ]
+        result = []
+        for stored in self._repo.list_unpaid(Direction.ISSUED):
+            invoice = stored.invoice
+            if client_key(invoice.customer or "") != wanted:
+                continue
+            due = invoice.due_date or invoice.issue_date  # sans échéance, la facture est due dès son émission
+            if due is None:
+                log.warning("Facture impayée %s sans échéance ni date d'émission : ignorée.", invoice.number)
+                continue
+            result.append(OverdueInvoice(
+                invoice_id=stored.id, number=invoice.number, customer=(invoice.customer or "").strip(),
+                amount=invoice.amount_incl_tax, issue_date=invoice.issue_date, due_date=due,
+                days_late=(today - due).days,
+            ))
+        return result
 
     def unpaid_ids(self) -> set[int]:
         return {stored.id for stored in self._repo.list_unpaid(Direction.ISSUED)}

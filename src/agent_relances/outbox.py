@@ -40,5 +40,10 @@ def save_reminder_eml(outbox: Path, reminder_id: int, client: Client, subject: s
     return _write_eml(outbox, f"relance_{reminder_id:05d}.eml", f"relance-{reminder_id}", client, subject, body)
 
 
-def save_plan_eml(outbox: Path, plan_id: int, client: Client, subject: str, body: str) -> str:
-    return _write_eml(outbox, f"echeancier_{plan_id:05d}.eml", f"echeancier-{plan_id}", client, subject, body)
+def plan_eml_path(outbox: Path, plan_id: int, suffix: str = "") -> Path:
+    return Path(outbox) / f"echeancier_{plan_id:05d}{suffix}.eml"
+
+
+def save_plan_eml(outbox: Path, plan_id: int, client: Client, subject: str, body: str, suffix: str = "") -> str:
+    return _write_eml(outbox, plan_eml_path(outbox, plan_id, suffix).name, f"echeancier-{plan_id}", client,
+                      subject, body)

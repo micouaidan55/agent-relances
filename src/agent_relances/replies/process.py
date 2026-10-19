@@ -8,7 +8,7 @@ from pathlib import Path
 import anthropic
 
 from agent_relances.drafting.llm import StepError
-from agent_relances.drafting.plans import confirmation_draft, deposit_plan_draft, proposal_draft
+from agent_relances.drafting.plans import CONFIRMATION_SUFFIX, confirmation_draft, deposit_plan_draft, proposal_draft
 from agent_relances.formatting import date_fr
 from agent_relances.models import (
     ActionKind, OverdueInvoice, Plan, PlanStatus, ReplyIntent, ReplyReading, ReplyStatus, Usage,
@@ -16,6 +16,7 @@ from agent_relances.models import (
 from agent_relances.replies.actions import propose_action, reply_is_suspicious
 from agent_relances.replies.matching import fetch_replies
 from agent_relances.replies.reader import promised_date_of, read_reply
+from agent_relances.outbox import plan_eml_path
 from agent_relances.rules.installments import PlanRuleError, max_installments, plan_amounts, plan_violations
 from agent_relances.sources import InvoiceSource
 from agent_relances.storage.recovery import RecoveryStore
@@ -94,7 +95,7 @@ def confirm_reply(reply_id: int, reminders: ReminderStore, recovery: RecoverySto
         return ["Cette réponse n'est pas à traiter (déjà traitée, classée ou non rattachée)."]
     key, kind = stored["client_key"], stored["proposed_action"]
 
-    prepared = _prepare(kind, stored, key, reminders, recovery, source, today, installments)
+    prepared = _prepare(kind, stored, key, reminders, recovery, source, outbox, today, installments)
     if isinstance(prepared, str):
         return [prepared]
 
@@ -102,20 +103,20 @@ def confirm_reply(reply_id: int, reminders: ReminderStore, recovery: RecoverySto
         return ["Cette réponse vient d'être traitée."]
     try:
         _apply(kind, stored, key, prepared, reminders, recovery, outbox, api, company, today)
-    except (PlanRuleError, ValueError, OSError) as error:
+    except Exception as error:
         _undo(recovery, reply_id, prepared, today)
-        log.error("Réponse %d : application échouée : %s", reply_id, error)
+        log.exception("Réponse %d : application échouée", reply_id)
         return [f"Action non appliquée : {error}"]
     reminders.log(None, "reponse_appliquee", {"reponse": reply_id, "client": key, "action": kind.value})
     log.info("Réponse %d appliquée : %s", reply_id, kind.value)
     return []
 
 
-def _prepare(kind, stored, key, reminders, recovery, source, today, installments):
+def _prepare(kind, stored, key, reminders, recovery, source, outbox, today, installments):
     """Vérifie et prépare l'action sans rien écrire ; renvoie un message d'erreur (str) ou les éléments à appliquer."""
     if kind in (ActionKind.POSTPONE, ActionKind.SUSPEND, ActionKind.HUMAN, ActionKind.NONE):
-        if kind is ActionKind.POSTPONE and stored["action_until"] is None:
-            return "Report sans date de fin : à traiter par un humain."
+        if kind is ActionKind.POSTPONE and (stored["action_until"] is None or stored["action_until"] <= today):
+            return "La date de report est dépassée : à traiter manuellement."
         return {}
     unpaid = source.unpaid_of(key, today)
     card = reminders.get_client(key)
@@ -144,8 +145,12 @@ def _prepare(kind, stored, key, reminders, recovery, source, today, installments
         return {"unpaid": unpaid, "card": card, "total": total, "amounts": amounts, "requested": asked}
     if kind is ActionKind.ACTIVATE_PLAN:
         plan = recovery.open_plan_for(key)
-        retry = plan is not None and plan.status is PlanStatus.ACTIVE and plan.agreed_on == today
-        if plan is None or (plan.status is not PlanStatus.PROPOSED and not retry):
+        if plan is None:
+            return "Aucun échéancier proposé à activer pour ce client."
+        if plan.status is PlanStatus.ACTIVE:  # reprise d'une activation dont le dépôt a échoué, quel que soit le jour
+            if plan_eml_path(outbox, plan.id, CONFIRMATION_SUFFIX).exists():
+                return "L'échéancier est déjà actif et sa confirmation est déposée."
+        elif plan.status is not PlanStatus.PROPOSED:
             return "Aucun échéancier proposé à activer pour ce client."
         return {"plan": plan, "card": card, "unpaid": unpaid}
     return f"Action inconnue : {kind.value}"

@@ -10,7 +10,9 @@ from agent_relances.sources import InvoiceSource
 from agent_relances.storage.db import connect
 from agent_relances.storage.recovery import RecoveryStore
 from agent_relances.storage.repository import ReminderStore
-from tests.factories import client, factures_conn, issued
+from agent_relances.models import ReminderDraft
+from agent_relances.replies import process as confirm_module
+from tests.factories import client, due_reminder, factures_conn, issued
 from tests.fakes import FakeClient, reply
 
 TODAY = date(2026, 10, 16)
@@ -102,7 +104,8 @@ def test_plan_request_proposes_four_installments_covering_all_unpaid(world):
     assert [i.amount for i in plan.installments] == [D("112.50")] * 4
     assert sorted(plan.invoice_ids) == sorted(world.ids)
     emls = list(world.outbox.glob("*.eml"))
-    assert len(emls) == 1 and f"E-{plan.id:05d}" in emls[0].read_text(errors="ignore")
+    assert [e.name for e in emls] == [f"echeancier_{plan.id:05d}_proposition.eml"]
+    assert f"E-{plan.id:05d}" in emls[0].read_text(errors="ignore")
 
 
 def test_agreement_activates_the_proposed_plan_with_dates(world):
@@ -113,8 +116,9 @@ def test_agreement_activates_the_proposed_plan_with_dates(world):
     plan = world.recovery.open_plan_for(KEY)
     assert plan.status is PlanStatus.ACTIVE and plan.agreed_on == TODAY
     assert plan.installments[0].due_date == date(2026, 11, 15)
-    confirmation, = world.outbox.glob("*.eml")           # même fichier par échéancier : la confirmation remplace la proposition
-    assert "15/11/2026" in confirmation.read_text(errors="ignore")
+    names = sorted(p.name for p in world.outbox.glob("*.eml"))
+    assert names == [f"echeancier_{plan.id:05d}_confirmation.eml", f"echeancier_{plan.id:05d}_proposition.eml"]
+    assert "15/11/2026" in (world.outbox / names[0]).read_text(errors="ignore")
 
 
 def test_human_override_outside_the_rule_is_refused_and_nothing_is_created(world):
@@ -182,6 +186,73 @@ def test_failed_side_effect_restores_status_and_cancels_plan(world, monkeypatch)
     assert world.recovery.open_plan_for(KEY) is None
 
 
+def test_failed_activation_deposit_is_retried_on_a_later_day(world, monkeypatch):
+    world.confirm(world.receive(reading(ReplyIntent.PLAN_REQUEST), message_id="<a@x>"))
+    rid = world.receive(reading(ReplyIntent.PLAN_AGREEMENT), message_id="<b@x>")
+    real = confirm_module.deposit_plan_draft
+    monkeypatch.setattr(confirm_module, "deposit_plan_draft", lambda *a, **k: (_ for _ in ()).throw(OSError("panne")))
+    assert world.confirm(rid)
+    assert world.status(rid) is ReplyStatus.TO_REVIEW
+    assert world.recovery.open_plan_for(KEY).status is PlanStatus.ACTIVE
+    monkeypatch.setattr(confirm_module, "deposit_plan_draft", real)
+    assert confirm_reply(rid, world.reminders, world.recovery, world.source, world.outbox, None, "Atelier Lumière",
+                         date(2026, 10, 20)) == []
+    plan = world.recovery.open_plan_for(KEY)
+    assert (world.outbox / f"echeancier_{plan.id:05d}_confirmation.eml").exists()
+    assert plan.agreed_on == TODAY
+
+
+def test_second_agreement_after_confirmation_deposited_creates_no_duplicate(world):
+    world.confirm(world.receive(reading(ReplyIntent.PLAN_REQUEST), message_id="<a@x>"))
+    first = world.receive(reading(ReplyIntent.PLAN_AGREEMENT), message_id="<b@x>")
+    second = world.receive(reading(ReplyIntent.PLAN_AGREEMENT), message_id="<c@x>")
+    assert world.confirm(first) == []
+    errors = world.confirm(second)
+    assert errors and "déjà actif" in errors[0]
+    assert world.status(second) is ReplyStatus.TO_REVIEW
+    assert len(list(world.outbox.glob("*_confirmation.eml"))) == 1
+
+
+def test_stale_postpone_is_refused_and_writes_nothing(world):
+    rid = world.receive(reading(ReplyIntent.PROMISED_DATE, "2026-10-30"))
+    errors = confirm_reply(rid, world.reminders, world.recovery, world.source, world.outbox, None, "Atelier Lumière",
+                           date(2026, 11, 2))
+    assert errors and "dépassée" in errors[0]
+    assert world.status(rid) is ReplyStatus.TO_REVIEW
+    assert world.recovery.active_holds(date(2026, 11, 1)) == {}
+
+
+def test_unexpected_error_after_transition_restores_status(world, monkeypatch):
+    rid = world.receive(reading(ReplyIntent.DISPUTE))
+    monkeypatch.setattr(world.recovery, "add_hold", lambda *a, **k: (_ for _ in ()).throw(KeyError("boum")))
+    assert world.confirm(rid)
+    assert world.status(rid) is ReplyStatus.TO_REVIEW
+
+
+def test_look_alike_sender_gives_human(world):
+    world.reminders.add_validated(due_reminder(), ReminderDraft(subject="Relance", body="Bonjour"), TODAY)
+    rid = world.receive(reading(ReplyIntent.PAYMENT_ANNOUNCED), subject="Re: Relance [Réf. R-00001]",
+                        sender="compta@hotel-canuts.co", body="Voici nos nouvelles coordonnées bancaires, IBAN FR76...")
+    stored = world.recovery.get_reply(rid)
+    assert stored["suspicious"] is True and stored["proposed_action"] is ActionKind.HUMAN
+
+
+def test_not_yet_due_invoice_enters_total_and_plan(tmp_path):
+    world = World(tmp_path, amounts=("100.00", "150.00"))
+    world.ids.append(world.repo.add(issued("AL-F", amount="200.00", due=date(2026, 12, 1)), "f.pdf"))
+    rid = world.receive(reading(ReplyIntent.PLAN_REQUEST))
+    assert world.confirm(rid) == []
+    plan = world.recovery.open_plan_for(KEY)
+    assert plan.total == D("450.00") and sorted(plan.invoice_ids) == sorted(world.ids)
+
+
+def test_unpaid_without_due_date_uses_issue_date():
+    conn, repo = factures_conn()
+    repo.add(issued("AL-9", due=None, issue=date(2026, 9, 1)), "a.pdf")
+    invoice, = InvoiceSource(conn).unpaid_of(KEY, TODAY)
+    assert invoice.due_date == date(2026, 9, 1) and invoice.days_late == 45
+
+
 def test_unmatched_reply_is_kept_without_model_call(world):
     (world.inbox / "x.eml").write_bytes(eml(sender="x@inconnu.io", subject="Re: [Réf. R-99999]"))
     api = FakeClient([])
@@ -189,6 +260,7 @@ def test_unmatched_reply_is_kept_without_model_call(world):
                           "Atelier Lumière", "atelier.fr", TODAY)
     stored = world.recovery.get_reply(ids[0])
     assert stored["status"] is ReplyStatus.UNMATCHED and stored["client_key"] is None
+    assert stored["cost_usd"] == 0
     assert api.messages.calls == []
     assert world.confirm(ids[0])                                # jamais applicable
 
