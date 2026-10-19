@@ -155,6 +155,9 @@ def _write_pdf(path, client, invoices, total, remaining, timeline, replies, plan
 
     if plan is not None:
         story.append(_p(f"Échéancier ({plan.status.value})", h))
+        if plan.exception_reason:
+            story.append(_p(f"Dérogation exceptionnelle au plafond de 4 mensualités ({len(plan.installments)} "
+                            f"mensualités), accordée par un humain. Motif : {plan.exception_reason}", body))
         rows = [["Mensualité", "Montant", "Échéance", "Situation"]]
         for item in plan.installments:
             if item.received_on is not None:

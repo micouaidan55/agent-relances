@@ -347,3 +347,20 @@ def test_log_failure_after_commit_keeps_the_dossier_and_the_dispute(world, monke
     [d] = w["recovery"].list_disputes()
     assert d["folder"] == str(result.folder)
     assert w["recovery"].active_holds(TODAY) == {KEY: None}
+
+
+def test_pdf_mentions_the_derogation_and_its_reason(world):
+    w = world
+    pid = w["recovery"].create_plan(KEY, list(w["ids"]), D("1500.00"), [D("250.00")] * 6, date(2026, 10, 1),
+                                    exception_reason="Client en difficulté, accord de la direction")
+    w["recovery"].activate_plan(pid, date(2026, 10, 16))
+    text = pdf_text(build(w, plan=w["recovery"].get_plan(pid)).pdf_path)
+    assert "dérogation" in text.lower() and "6 mensualités" in text
+    assert "Client en difficulté, accord de la direction" in text
+
+
+def test_pdf_without_derogation_does_not_mention_one(world):
+    w = world
+    pid = w["recovery"].create_plan(KEY, list(w["ids"]), D("1500.50"), [D("750.25")] * 2, date(2026, 10, 1))
+    text = pdf_text(build(w, plan=w["recovery"].get_plan(pid)).pdf_path)
+    assert "érogation" not in text
