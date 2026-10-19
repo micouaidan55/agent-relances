@@ -91,7 +91,8 @@ CREATE TABLE IF NOT EXISTS plans (
     status TEXT NOT NULL,
     proposed_on TEXT NOT NULL,
     agreed_on TEXT,
-    closed_on TEXT
+    closed_on TEXT,
+    exception_reason TEXT
 );
 CREATE UNIQUE INDEX IF NOT EXISTS one_open_plan_per_client ON plans (client_key)
     WHERE status IN ('propose', 'en_cours');
@@ -134,5 +135,9 @@ def connect(path: str = ":memory:") -> sqlite3.Connection:
     columns = {row["name"] for row in conn.execute("PRAGMA table_info(reminders)")}
     if "origin" not in columns:  # bases créées avant l'ajout de la colonne
         conn.execute("ALTER TABLE reminders ADD COLUMN origin TEXT NOT NULL DEFAULT 'app'")
+        conn.commit()
+    plan_columns = {row["name"] for row in conn.execute("PRAGMA table_info(plans)")}
+    if "exception_reason" not in plan_columns:  # bases créées avant la dérogation d'échéancier
+        conn.execute("ALTER TABLE plans ADD COLUMN exception_reason TEXT")
         conn.commit()
     return conn

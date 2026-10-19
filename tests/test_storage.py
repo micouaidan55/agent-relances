@@ -104,3 +104,18 @@ def test_connect_adds_the_origin_column_to_an_older_database(tmp_path):
     conn = connect(path)
     connect(path)                                                   # idempotent
     assert conn.execute("SELECT origin FROM reminders").fetchone()["origin"] == "app"
+
+
+def test_connect_adds_the_exception_reason_column_to_an_older_database(tmp_path):
+    import sqlite3
+    path = str(tmp_path / "old_plans.db")
+    old = sqlite3.connect(path)
+    old.executescript("CREATE TABLE plans (id INTEGER PRIMARY KEY AUTOINCREMENT, client_key TEXT NOT NULL,"
+                      " total TEXT NOT NULL, status TEXT NOT NULL, proposed_on TEXT NOT NULL, agreed_on TEXT,"
+                      " closed_on TEXT);"
+                      "INSERT INTO plans (client_key, total, status, proposed_on) VALUES ('a', '500', 'propose', '2026-10-01');")
+    old.commit()
+    old.close()
+    conn = connect(path)
+    connect(path)                                                   # idempotent
+    assert conn.execute("SELECT exception_reason FROM plans").fetchone()["exception_reason"] is None

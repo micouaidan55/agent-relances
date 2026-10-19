@@ -151,8 +151,10 @@ class RecoveryStore:
 
     def create_plan(
         self, client_key_: str, invoice_ids: list[int], total: Decimal, amounts: list[Decimal], today: date,
+        exception_reason: str | None = None,
     ) -> int:
-        problems = plan_violations(amounts, total)
+        reason = (exception_reason or "").strip() or None   # un motif vide ou blanc n'ouvre aucune dérogation
+        problems = plan_violations(amounts, total, exception=bool(reason))
         if problems:
             raise ValueError("Échéancier non conforme : " + " ".join(problems))
         if not invoice_ids:
@@ -162,8 +164,8 @@ class RecoveryStore:
             raise ValueError("Un échéancier est déjà proposé ou en cours pour ce client.")
         try:
             cursor = self._conn.execute(
-                "INSERT INTO plans (client_key, total, status, proposed_on) VALUES (?, ?, ?, ?)",
-                (key, str(total), PlanStatus.PROPOSED.value, today.isoformat()),
+                "INSERT INTO plans (client_key, total, status, proposed_on, exception_reason) VALUES (?, ?, ?, ?, ?)",
+                (key, str(total), PlanStatus.PROPOSED.value, today.isoformat(), reason),
             )
             plan_id = int(cursor.lastrowid)
             self._conn.executemany(
@@ -263,7 +265,7 @@ class RecoveryStore:
         return Plan(
             id=row["id"], client_key=row["client_key"], invoice_ids=[r["invoice_id"] for r in invoices],
             total=Decimal(row["total"]), status=PlanStatus(row["status"]), proposed_on=date.fromisoformat(row["proposed_on"]),
-            agreed_on=_date(row["agreed_on"]),
+            agreed_on=_date(row["agreed_on"]), exception_reason=row["exception_reason"],
             installments=[
                 Installment(number=r["number"], amount=Decimal(r["amount"]), due_date=_date(r["due_date"]),
                             received_on=_date(r["received_on"]))

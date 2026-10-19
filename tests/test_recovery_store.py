@@ -283,3 +283,27 @@ def test_existing_database_gets_the_dispute_index(tmp_path):
     conn = connect(str(path))
     indexes = {row["name"]: row["unique"] for row in conn.execute("PRAGMA index_list(disputes)")}
     assert indexes.get("one_dispute_per_client") == 1
+
+
+def test_plan_with_exception_reason_allows_up_to_twelve_installments(store):
+    amounts = [Decimal("100")] * 6
+    with pytest.raises(ValueError, match="non conforme"):
+        store.create_plan("atelier", [1], Decimal("600"), amounts, TODAY)
+    with pytest.raises(ValueError, match="non conforme"):
+        store.create_plan("atelier", [1], Decimal("600"), amounts, TODAY, exception_reason="   ")
+    plan_id = store.create_plan("atelier", [1], Decimal("600"), amounts, TODAY, exception_reason="  Client en difficulté  ")
+    plan = store.get_plan(plan_id)
+    assert len(plan.installments) == 6 and plan.exception_reason == "Client en difficulté"
+    assert store.open_plan_for("atelier").exception_reason == "Client en difficulté"
+
+
+def test_plan_exception_never_exceeds_twelve_or_breaks_the_minimum(store):
+    with pytest.raises(ValueError, match="non conforme"):
+        store.create_plan("atelier", [1], Decimal("1300"), [Decimal("100")] * 13, TODAY, exception_reason="motif")
+    with pytest.raises(ValueError, match="non conforme"):
+        store.create_plan("atelier", [1], Decimal("600"), [Decimal("75")] * 8, TODAY, exception_reason="motif")
+
+
+def test_plan_without_exception_has_no_reason(store):
+    plan_id = store.create_plan("atelier", [1], Decimal("500"), [Decimal("250")] * 2, TODAY)
+    assert store.get_plan(plan_id).exception_reason is None

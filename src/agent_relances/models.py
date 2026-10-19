@@ -194,6 +194,7 @@ class Plan(BaseModel):
     status: PlanStatus
     proposed_on: date
     agreed_on: date | None = None
+    exception_reason: str | None = None   # dérogation humaine au plafond de 4 versements, motivée
     installments: list[Installment]
 
     @property
