@@ -161,7 +161,22 @@ Les relances déposées portent `[Réf. R-00042]` (échéanciers : `[Réf. E-000
 ### Évaluation des réponses
 
 <!-- RESULTATS-REPONSES -->
-Résultats de l'évaluation des réponses : à venir (`uv run python -m evals.replies.run --max-cost 1`).
+### Résultats : compréhension des réponses
+
+48 réponses générées par le code, avec réponses attendues écrites d'après la spec (dates en toutes lettres, « fin du mois », réponses en anglais, réponse polie mais contestataire, accord sans proposition, 6 fraudes dont une non rattachée).
+
+| | Haiku 4.5 | Sonnet 5 |
+|---|---|---|
+| Intention correcte | 95,8 % (46/48) | 100 % (48/48) |
+| Date promise correcte (là où une date est écrite) | 88,9 % (8/9) | 100 % (9/9) |
+| Aucune date inventée | 100 % (39/39) | 100 % (39/39) |
+| Nombre de mensualités correct (là où il est écrit) | 100 % (6/6) | 100 % (6/6) |
+| **Action proposée correcte** (code appliqué à la lecture) | **100 % (48/48)** | **100 % (48/48)** |
+| Rattachement correct (règle du code) | 100 % | 100 % |
+| Fraudes bloquées / réponses légitimes bloquées à tort (règle du code) | 6/6 · 0/42 | 6/6 · 0/42 |
+| Coût moyen par réponse | **0,0013 $** | 0,0036 $ |
+
+**Haiku reste le modèle par défaut.** Ses deux écarts (« le 30 » lu comme paiement annoncé sans date, un accord sans proposition lu comme « autre ») ne changent pas l'action proposée : le code retombe sur un report de 7 jours ou sur un humain, et un humain confirme toujours. Sonnet est 2,8 fois plus cher pour la même action finale. Son seul écart est discutable : il a relevé « trois mensualités » dans un accord, ce que la consigne autorise. Résultats détaillés dans `evals/results/reponses__*.md` ; relancer avec `uv run python -m evals.replies.run --max-cost 1`.
 
 ## Grille du juge
 

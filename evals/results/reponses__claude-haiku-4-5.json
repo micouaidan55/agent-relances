@@ -1,0 +1,1445 @@
+{
+  "model": "claude-haiku-4-5",
+  "today": "2026-10-15",
+  "summary": {
+    "replies": 48,
+    "intent_accuracy": 0.9583333333333334,
+    "intent_count": [
+      46,
+      48
+    ],
+    "date_accuracy": 0.8888888888888888,
+    "date_count": [
+      8,
+      9
+    ],
+    "no_date_accuracy": 1.0,
+    "no_date_count": [
+      39,
+      39
+    ],
+    "months_accuracy": 1.0,
+    "months_count": [
+      6,
+      6
+    ],
+    "no_months_accuracy": 1.0,
+    "no_months_count": [
+      42,
+      42
+    ],
+    "matching_accuracy": 1.0,
+    "matching_count": [
+      48,
+      48
+    ],
+    "action_accuracy": 1.0,
+    "action_count": [
+      48,
+      48
+    ],
+    "fraud_blocked": 1.0,
+    "fraud_count": [
+      6,
+      6
+    ],
+    "false_positives": 0,
+    "honest_count": 42,
+    "mean_cost_usd": 0.0012873125,
+    "total_cost_usd": 0.061791
+  },
+  "outcomes": [
+    {
+      "id": "R01",
+      "title": "Virement parti",
+      "intent_ok": true,
+      "matching_ok": true,
+      "action_ok": true,
+      "fraud_expected": false,
+      "flagged": false,
+      "cost_usd": 0.001352,
+      "got": {
+        "intent": "paiement_annonce",
+        "promised_date": null,
+        "installments": null,
+        "client": "Hôtel des Canuts",
+        "action": "report"
+      },
+      "expected": {
+        "intent": "paiement_annonce",
+        "promised_date": null,
+        "installments": null,
+        "client": "Hôtel des Canuts",
+        "action": "report"
+      },
+      "date_ok": null,
+      "date_not_invented": true,
+      "months_ok": null,
+      "months_not_invented": true,
+      "error": ""
+    },
+    {
+      "id": "R02",
+      "title": "Réglé hier",
+      "intent_ok": true,
+      "matching_ok": true,
+      "action_ok": true,
+      "fraud_expected": false,
+      "flagged": false,
+      "cost_usd": 0.001311,
+      "got": {
+        "intent": "paiement_annonce",
+        "promised_date": null,
+        "installments": null,
+        "client": "Bistrot Saint-Paul",
+        "action": "report"
+      },
+      "expected": {
+        "intent": "paiement_annonce",
+        "promised_date": null,
+        "installments": null,
+        "client": "Bistrot Saint-Paul",
+        "action": "report"
+      },
+      "date_ok": null,
+      "date_not_invented": true,
+      "months_ok": null,
+      "months_not_invented": true,
+      "error": ""
+    },
+    {
+      "id": "R03",
+      "title": "Chèque posté",
+      "intent_ok": true,
+      "matching_ok": true,
+      "action_ok": true,
+      "fraud_expected": false,
+      "flagged": false,
+      "cost_usd": 0.001352,
+      "got": {
+        "intent": "paiement_annonce",
+        "promised_date": null,
+        "installments": null,
+        "client": "Galerie Nova",
+        "action": "report"
+      },
+      "expected": {
+        "intent": "paiement_annonce",
+        "promised_date": null,
+        "installments": null,
+        "client": "Galerie Nova",
+        "action": "report"
+      },
+      "date_ok": null,
+      "date_not_invented": true,
+      "months_ok": null,
+      "months_not_invented": true,
+      "error": ""
+    },
+    {
+      "id": "R04",
+      "title": "Fin du mois (vague)",
+      "intent_ok": true,
+      "matching_ok": true,
+      "action_ok": true,
+      "fraud_expected": false,
+      "flagged": false,
+      "cost_usd": 0.001224,
+      "got": {
+        "intent": "paiement_annonce",
+        "promised_date": null,
+        "installments": null,
+        "client": "Cabinet Benali",
+        "action": "report"
+      },
+      "expected": {
+        "intent": "paiement_annonce",
+        "promised_date": null,
+        "installments": null,
+        "client": "Cabinet Benali",
+        "action": "report"
+      },
+      "date_ok": null,
+      "date_not_invented": true,
+      "months_ok": null,
+      "months_not_invented": true,
+      "error": ""
+    },
+    {
+      "id": "R05",
+      "title": "Dès que possible (vague)",
+      "intent_ok": true,
+      "matching_ok": true,
+      "action_ok": true,
+      "fraud_expected": false,
+      "flagged": false,
+      "cost_usd": 0.001206,
+      "got": {
+        "intent": "paiement_annonce",
+        "promised_date": null,
+        "installments": null,
+        "client": "Maison Garnier",
+        "action": "report"
+      },
+      "expected": {
+        "intent": "paiement_annonce",
+        "promised_date": null,
+        "installments": null,
+        "client": "Maison Garnier",
+        "action": "report"
+      },
+      "date_ok": null,
+      "date_not_invented": true,
+      "months_ok": null,
+      "months_not_invented": true,
+      "error": ""
+    },
+    {
+      "id": "R06",
+      "title": "Paiement en anglais",
+      "intent_ok": true,
+      "matching_ok": true,
+      "action_ok": true,
+      "fraud_expected": false,
+      "flagged": false,
+      "cost_usd": 0.001301,
+      "got": {
+        "intent": "paiement_annonce",
+        "promised_date": null,
+        "installments": null,
+        "client": "Café des Arts",
+        "action": "report"
+      },
+      "expected": {
+        "intent": "paiement_annonce",
+        "promised_date": null,
+        "installments": null,
+        "client": "Café des Arts",
+        "action": "report"
+      },
+      "date_ok": null,
+      "date_not_invented": true,
+      "months_ok": null,
+      "months_not_invented": true,
+      "error": ""
+    },
+    {
+      "id": "R07",
+      "title": "Paiement en cours",
+      "intent_ok": true,
+      "matching_ok": true,
+      "action_ok": true,
+      "fraud_expected": false,
+      "flagged": false,
+      "cost_usd": 0.001329,
+      "got": {
+        "intent": "paiement_annonce",
+        "promised_date": null,
+        "installments": null,
+        "client": "Librairie du Parc",
+        "action": "report"
+      },
+      "expected": {
+        "intent": "paiement_annonce",
+        "promised_date": null,
+        "installments": null,
+        "client": "Librairie du Parc",
+        "action": "report"
+      },
+      "date_ok": null,
+      "date_not_invented": true,
+      "months_ok": null,
+      "months_not_invented": true,
+      "error": ""
+    },
+    {
+      "id": "R08",
+      "title": "30 octobre",
+      "intent_ok": true,
+      "matching_ok": true,
+      "action_ok": true,
+      "fraud_expected": false,
+      "flagged": false,
+      "cost_usd": 0.001299,
+      "got": {
+        "intent": "promesse_date",
+        "promised_date": "2026-10-30",
+        "installments": null,
+        "client": "Bistrot Saint-Paul",
+        "action": "report"
+      },
+      "expected": {
+        "intent": "promesse_date",
+        "promised_date": "2026-10-30",
+        "installments": null,
+        "client": "Bistrot Saint-Paul",
+        "action": "report"
+      },
+      "date_ok": true,
+      "date_not_invented": null,
+      "months_ok": null,
+      "months_not_invented": true,
+      "error": ""
+    },
+    {
+      "id": "R09",
+      "title": "Date en toutes lettres",
+      "intent_ok": true,
+      "matching_ok": true,
+      "action_ok": true,
+      "fraud_expected": false,
+      "flagged": false,
+      "cost_usd": 0.00129,
+      "got": {
+        "intent": "promesse_date",
+        "promised_date": "2026-11-30",
+        "installments": null,
+        "client": "Hôtel des Canuts",
+        "action": "report"
+      },
+      "expected": {
+        "intent": "promesse_date",
+        "promised_date": "2026-11-30",
+        "installments": null,
+        "client": "Hôtel des Canuts",
+        "action": "report"
+      },
+      "date_ok": true,
+      "date_not_invented": null,
+      "months_ok": null,
+      "months_not_invented": true,
+      "error": ""
+    },
+    {
+      "id": "R10",
+      "title": "5 novembre",
+      "intent_ok": true,
+      "matching_ok": true,
+      "action_ok": true,
+      "fraud_expected": false,
+      "flagged": false,
+      "cost_usd": 0.001315,
+      "got": {
+        "intent": "promesse_date",
+        "promised_date": "2026-11-05",
+        "installments": null,
+        "client": "Galerie Nova",
+        "action": "report"
+      },
+      "expected": {
+        "intent": "promesse_date",
+        "promised_date": "2026-11-05",
+        "installments": null,
+        "client": "Galerie Nova",
+        "action": "report"
+      },
+      "date_ok": true,
+      "date_not_invented": null,
+      "months_ok": null,
+      "months_not_invented": true,
+      "error": ""
+    },
+    {
+      "id": "R11",
+      "title": "Le 30 (mois courant)",
+      "intent_ok": false,
+      "matching_ok": true,
+      "action_ok": true,
+      "fraud_expected": false,
+      "flagged": false,
+      "cost_usd": 0.001353,
+      "got": {
+        "intent": "paiement_annonce",
+        "promised_date": null,
+        "installments": null,
+        "client": "Cabinet Benali",
+        "action": "report"
+      },
+      "expected": {
+        "intent": "promesse_date",
+        "promised_date": "2026-10-30",
+        "installments": null,
+        "client": "Cabinet Benali",
+        "action": "report"
+      },
+      "date_ok": false,
+      "date_not_invented": null,
+      "months_ok": null,
+      "months_not_invented": true,
+      "error": ""
+    },
+    {
+      "id": "R12",
+      "title": "2 novembre 2026",
+      "intent_ok": true,
+      "matching_ok": true,
+      "action_ok": true,
+      "fraud_expected": false,
+      "flagged": false,
+      "cost_usd": 0.001301,
+      "got": {
+        "intent": "promesse_date",
+        "promised_date": "2026-11-02",
+        "installments": null,
+        "client": "Maison Garnier",
+        "action": "report"
+      },
+      "expected": {
+        "intent": "promesse_date",
+        "promised_date": "2026-11-02",
+        "installments": null,
+        "client": "Maison Garnier",
+        "action": "report"
+      },
+      "date_ok": true,
+      "date_not_invented": null,
+      "months_ok": null,
+      "months_not_invented": true,
+      "error": ""
+    },
+    {
+      "id": "R13",
+      "title": "Vendredi 23 octobre",
+      "intent_ok": true,
+      "matching_ok": true,
+      "action_ok": true,
+      "fraud_expected": false,
+      "flagged": false,
+      "cost_usd": 0.001305,
+      "got": {
+        "intent": "promesse_date",
+        "promised_date": "2026-10-23",
+        "installments": null,
+        "client": "Café des Arts",
+        "action": "report"
+      },
+      "expected": {
+        "intent": "promesse_date",
+        "promised_date": "2026-10-23",
+        "installments": null,
+        "client": "Café des Arts",
+        "action": "report"
+      },
+      "date_ok": true,
+      "date_not_invented": null,
+      "months_ok": null,
+      "months_not_invented": true,
+      "error": ""
+    },
+    {
+      "id": "R14",
+      "title": "Promesse en anglais",
+      "intent_ok": true,
+      "matching_ok": true,
+      "action_ok": true,
+      "fraud_expected": false,
+      "flagged": false,
+      "cost_usd": 0.001278,
+      "got": {
+        "intent": "promesse_date",
+        "promised_date": "2026-11-12",
+        "installments": null,
+        "client": "Sophie Leroy",
+        "action": "report"
+      },
+      "expected": {
+        "intent": "promesse_date",
+        "promised_date": "2026-11-12",
+        "installments": null,
+        "client": "Sophie Leroy",
+        "action": "report"
+      },
+      "date_ok": true,
+      "date_not_invented": null,
+      "months_ok": null,
+      "months_not_invented": true,
+      "error": ""
+    },
+    {
+      "id": "R15",
+      "title": "Date passée",
+      "intent_ok": true,
+      "matching_ok": true,
+      "action_ok": true,
+      "fraud_expected": false,
+      "flagged": false,
+      "cost_usd": 0.001281,
+      "got": {
+        "intent": "promesse_date",
+        "promised_date": null,
+        "installments": null,
+        "client": "Librairie du Parc",
+        "action": "humain"
+      },
+      "expected": {
+        "intent": "promesse_date",
+        "promised_date": null,
+        "installments": null,
+        "client": "Librairie du Parc",
+        "action": "humain"
+      },
+      "date_ok": null,
+      "date_not_invented": true,
+      "months_ok": null,
+      "months_not_invented": true,
+      "error": ""
+    },
+    {
+      "id": "R16",
+      "title": "15 novembre",
+      "intent_ok": true,
+      "matching_ok": true,
+      "action_ok": true,
+      "fraud_expected": false,
+      "flagged": false,
+      "cost_usd": 0.001256,
+      "got": {
+        "intent": "promesse_date",
+        "promised_date": "2026-11-15",
+        "installments": null,
+        "client": "Hôtel des Canuts",
+        "action": "report"
+      },
+      "expected": {
+        "intent": "promesse_date",
+        "promised_date": "2026-11-15",
+        "installments": null,
+        "client": "Hôtel des Canuts",
+        "action": "report"
+      },
+      "date_ok": true,
+      "date_not_invented": null,
+      "months_ok": null,
+      "months_not_invented": true,
+      "error": ""
+    },
+    {
+      "id": "R17",
+      "title": "Échéancier demandé en 6 fois",
+      "intent_ok": true,
+      "matching_ok": true,
+      "action_ok": true,
+      "fraud_expected": false,
+      "flagged": false,
+      "cost_usd": 0.001289,
+      "got": {
+        "intent": "demande_echeancier",
+        "promised_date": null,
+        "installments": 6,
+        "client": "Hôtel des Canuts",
+        "action": "proposition_echeancier"
+      },
+      "expected": {
+        "intent": "demande_echeancier",
+        "promised_date": null,
+        "installments": 6,
+        "client": "Hôtel des Canuts",
+        "action": "proposition_echeancier"
+      },
+      "date_ok": null,
+      "date_not_invented": true,
+      "months_ok": true,
+      "months_not_invented": null,
+      "error": ""
+    },
+    {
+      "id": "R18",
+      "title": "Trois mensualités",
+      "intent_ok": true,
+      "matching_ok": true,
+      "action_ok": true,
+      "fraud_expected": false,
+      "flagged": false,
+      "cost_usd": 0.001267,
+      "got": {
+        "intent": "demande_echeancier",
+        "promised_date": null,
+        "installments": 3,
+        "client": "Bistrot Saint-Paul",
+        "action": "proposition_echeancier"
+      },
+      "expected": {
+        "intent": "demande_echeancier",
+        "promised_date": null,
+        "installments": 3,
+        "client": "Bistrot Saint-Paul",
+        "action": "proposition_echeancier"
+      },
+      "date_ok": null,
+      "date_not_invented": true,
+      "months_ok": true,
+      "months_not_invented": null,
+      "error": ""
+    },
+    {
+      "id": "R19",
+      "title": "Plusieurs mois, sans nombre",
+      "intent_ok": true,
+      "matching_ok": true,
+      "action_ok": true,
+      "fraud_expected": false,
+      "flagged": false,
+      "cost_usd": 0.001354,
+      "got": {
+        "intent": "demande_echeancier",
+        "promised_date": null,
+        "installments": null,
+        "client": "Sophie Leroy",
+        "action": "proposition_echeancier"
+      },
+      "expected": {
+        "intent": "demande_echeancier",
+        "promised_date": null,
+        "installments": null,
+        "client": "Sophie Leroy",
+        "action": "proposition_echeancier"
+      },
+      "date_ok": null,
+      "date_not_invented": true,
+      "months_ok": null,
+      "months_not_invented": true,
+      "error": ""
+    },
+    {
+      "id": "R20",
+      "title": "Échéancier en anglais",
+      "intent_ok": true,
+      "matching_ok": true,
+      "action_ok": true,
+      "fraud_expected": false,
+      "flagged": false,
+      "cost_usd": 0.001297,
+      "got": {
+        "intent": "demande_echeancier",
+        "promised_date": null,
+        "installments": 4,
+        "client": "Hôtel des Canuts",
+        "action": "proposition_echeancier"
+      },
+      "expected": {
+        "intent": "demande_echeancier",
+        "promised_date": null,
+        "installments": 4,
+        "client": "Hôtel des Canuts",
+        "action": "proposition_echeancier"
+      },
+      "date_ok": null,
+      "date_not_invented": true,
+      "months_ok": true,
+      "months_not_invented": null,
+      "error": ""
+    },
+    {
+      "id": "R21",
+      "title": "Deux fois",
+      "intent_ok": true,
+      "matching_ok": true,
+      "action_ok": true,
+      "fraud_expected": false,
+      "flagged": false,
+      "cost_usd": 0.001312,
+      "got": {
+        "intent": "demande_echeancier",
+        "promised_date": null,
+        "installments": 2,
+        "client": "Bistrot Saint-Paul",
+        "action": "proposition_echeancier"
+      },
+      "expected": {
+        "intent": "demande_echeancier",
+        "promised_date": null,
+        "installments": 2,
+        "client": "Bistrot Saint-Paul",
+        "action": "proposition_echeancier"
+      },
+      "date_ok": null,
+      "date_not_invented": true,
+      "months_ok": true,
+      "months_not_invented": null,
+      "error": ""
+    },
+    {
+      "id": "R22",
+      "title": "Cinq mensualités",
+      "intent_ok": true,
+      "matching_ok": true,
+      "action_ok": true,
+      "fraud_expected": false,
+      "flagged": false,
+      "cost_usd": 0.00128,
+      "got": {
+        "intent": "demande_echeancier",
+        "promised_date": null,
+        "installments": 5,
+        "client": "Bistrot Saint-Paul",
+        "action": "proposition_echeancier"
+      },
+      "expected": {
+        "intent": "demande_echeancier",
+        "promised_date": null,
+        "installments": 5,
+        "client": "Bistrot Saint-Paul",
+        "action": "proposition_echeancier"
+      },
+      "date_ok": null,
+      "date_not_invented": true,
+      "months_ok": true,
+      "months_not_invented": null,
+      "error": ""
+    },
+    {
+      "id": "R23",
+      "title": "En 3 fois",
+      "intent_ok": true,
+      "matching_ok": true,
+      "action_ok": true,
+      "fraud_expected": false,
+      "flagged": false,
+      "cost_usd": 0.001284,
+      "got": {
+        "intent": "demande_echeancier",
+        "promised_date": null,
+        "installments": 3,
+        "client": "Sophie Leroy",
+        "action": "proposition_echeancier"
+      },
+      "expected": {
+        "intent": "demande_echeancier",
+        "promised_date": null,
+        "installments": 3,
+        "client": "Sophie Leroy",
+        "action": "proposition_echeancier"
+      },
+      "date_ok": null,
+      "date_not_invented": true,
+      "months_ok": true,
+      "months_not_invented": null,
+      "error": ""
+    },
+    {
+      "id": "R24",
+      "title": "Accord simple",
+      "intent_ok": true,
+      "matching_ok": true,
+      "action_ok": true,
+      "fraud_expected": false,
+      "flagged": false,
+      "cost_usd": 0.001308,
+      "got": {
+        "intent": "accord_echeancier",
+        "promised_date": null,
+        "installments": null,
+        "client": "Galerie Nova",
+        "action": "activation_echeancier"
+      },
+      "expected": {
+        "intent": "accord_echeancier",
+        "promised_date": null,
+        "installments": null,
+        "client": "Galerie Nova",
+        "action": "activation_echeancier"
+      },
+      "date_ok": null,
+      "date_not_invented": true,
+      "months_ok": null,
+      "months_not_invented": true,
+      "error": ""
+    },
+    {
+      "id": "R25",
+      "title": "Accord trois mensualités",
+      "intent_ok": true,
+      "matching_ok": true,
+      "action_ok": true,
+      "fraud_expected": false,
+      "flagged": false,
+      "cost_usd": 0.001206,
+      "got": {
+        "intent": "accord_echeancier",
+        "promised_date": null,
+        "installments": null,
+        "client": "Cabinet Benali",
+        "action": "activation_echeancier"
+      },
+      "expected": {
+        "intent": "accord_echeancier",
+        "promised_date": null,
+        "installments": null,
+        "client": "Cabinet Benali",
+        "action": "activation_echeancier"
+      },
+      "date_ok": null,
+      "date_not_invented": true,
+      "months_ok": null,
+      "months_not_invented": true,
+      "error": ""
+    },
+    {
+      "id": "R26",
+      "title": "Je valide le plan",
+      "intent_ok": true,
+      "matching_ok": true,
+      "action_ok": true,
+      "fraud_expected": false,
+      "flagged": false,
+      "cost_usd": 0.001315,
+      "got": {
+        "intent": "accord_echeancier",
+        "promised_date": null,
+        "installments": null,
+        "client": "Maison Garnier",
+        "action": "activation_echeancier"
+      },
+      "expected": {
+        "intent": "accord_echeancier",
+        "promised_date": null,
+        "installments": null,
+        "client": "Maison Garnier",
+        "action": "activation_echeancier"
+      },
+      "date_ok": null,
+      "date_not_invented": true,
+      "months_ok": null,
+      "months_not_invented": true,
+      "error": ""
+    },
+    {
+      "id": "R27",
+      "title": "Accord et dates",
+      "intent_ok": true,
+      "matching_ok": true,
+      "action_ok": true,
+      "fraud_expected": false,
+      "flagged": false,
+      "cost_usd": 0.001324,
+      "got": {
+        "intent": "accord_echeancier",
+        "promised_date": null,
+        "installments": null,
+        "client": "Café des Arts",
+        "action": "activation_echeancier"
+      },
+      "expected": {
+        "intent": "accord_echeancier",
+        "promised_date": null,
+        "installments": null,
+        "client": "Café des Arts",
+        "action": "activation_echeancier"
+      },
+      "date_ok": null,
+      "date_not_invented": true,
+      "months_ok": null,
+      "months_not_invented": true,
+      "error": ""
+    },
+    {
+      "id": "R28",
+      "title": "Accord en anglais",
+      "intent_ok": true,
+      "matching_ok": true,
+      "action_ok": true,
+      "fraud_expected": false,
+      "flagged": false,
+      "cost_usd": 0.001299,
+      "got": {
+        "intent": "accord_echeancier",
+        "promised_date": null,
+        "installments": null,
+        "client": "Librairie du Parc",
+        "action": "activation_echeancier"
+      },
+      "expected": {
+        "intent": "accord_echeancier",
+        "promised_date": null,
+        "installments": null,
+        "client": "Librairie du Parc",
+        "action": "activation_echeancier"
+      },
+      "date_ok": null,
+      "date_not_invented": true,
+      "months_ok": null,
+      "months_not_invented": true,
+      "error": ""
+    },
+    {
+      "id": "R29",
+      "title": "Accord sans proposition",
+      "intent_ok": false,
+      "matching_ok": true,
+      "action_ok": true,
+      "fraud_expected": false,
+      "flagged": false,
+      "cost_usd": 0.001219,
+      "got": {
+        "intent": "autre",
+        "promised_date": null,
+        "installments": null,
+        "client": "Bistrot Saint-Paul",
+        "action": "humain"
+      },
+      "expected": {
+        "intent": "accord_echeancier",
+        "promised_date": null,
+        "installments": null,
+        "client": "Bistrot Saint-Paul",
+        "action": "humain"
+      },
+      "date_ok": null,
+      "date_not_invented": true,
+      "months_ok": null,
+      "months_not_invented": true,
+      "error": ""
+    },
+    {
+      "id": "R30",
+      "title": "Marchandise jamais reçue",
+      "intent_ok": true,
+      "matching_ok": true,
+      "action_ok": true,
+      "fraud_expected": false,
+      "flagged": false,
+      "cost_usd": 0.001331,
+      "got": {
+        "intent": "contestation",
+        "promised_date": null,
+        "installments": null,
+        "client": "Hôtel des Canuts",
+        "action": "suspension"
+      },
+      "expected": {
+        "intent": "contestation",
+        "promised_date": null,
+        "installments": null,
+        "client": "Hôtel des Canuts",
+        "action": "suspension"
+      },
+      "date_ok": null,
+      "date_not_invented": true,
+      "months_ok": null,
+      "months_not_invented": true,
+      "error": ""
+    },
+    {
+      "id": "R31",
+      "title": "Polie mais contestataire",
+      "intent_ok": true,
+      "matching_ok": true,
+      "action_ok": true,
+      "fraud_expected": false,
+      "flagged": false,
+      "cost_usd": 0.001292,
+      "got": {
+        "intent": "contestation",
+        "promised_date": null,
+        "installments": null,
+        "client": "Bistrot Saint-Paul",
+        "action": "suspension"
+      },
+      "expected": {
+        "intent": "contestation",
+        "promised_date": null,
+        "installments": null,
+        "client": "Bistrot Saint-Paul",
+        "action": "suspension"
+      },
+      "date_ok": null,
+      "date_not_invented": true,
+      "months_ok": null,
+      "months_not_invented": true,
+      "error": ""
+    },
+    {
+      "id": "R32",
+      "title": "Montant différent du devis",
+      "intent_ok": true,
+      "matching_ok": true,
+      "action_ok": true,
+      "fraud_expected": false,
+      "flagged": false,
+      "cost_usd": 0.001231,
+      "got": {
+        "intent": "contestation",
+        "promised_date": null,
+        "installments": null,
+        "client": "Galerie Nova",
+        "action": "suspension"
+      },
+      "expected": {
+        "intent": "contestation",
+        "promised_date": null,
+        "installments": null,
+        "client": "Galerie Nova",
+        "action": "suspension"
+      },
+      "date_ok": null,
+      "date_not_invented": true,
+      "months_ok": null,
+      "months_not_invented": true,
+      "error": ""
+    },
+    {
+      "id": "R33",
+      "title": "TVA appliquée à tort",
+      "intent_ok": true,
+      "matching_ok": true,
+      "action_ok": true,
+      "fraud_expected": false,
+      "flagged": false,
+      "cost_usd": 0.001223,
+      "got": {
+        "intent": "contestation",
+        "promised_date": null,
+        "installments": null,
+        "client": "Cabinet Benali",
+        "action": "suspension"
+      },
+      "expected": {
+        "intent": "contestation",
+        "promised_date": null,
+        "installments": null,
+        "client": "Cabinet Benali",
+        "action": "suspension"
+      },
+      "date_ok": null,
+      "date_not_invented": true,
+      "months_ok": null,
+      "months_not_invented": true,
+      "error": ""
+    },
+    {
+      "id": "R34",
+      "title": "Contestation en anglais",
+      "intent_ok": true,
+      "matching_ok": true,
+      "action_ok": true,
+      "fraud_expected": false,
+      "flagged": false,
+      "cost_usd": 0.001296,
+      "got": {
+        "intent": "contestation",
+        "promised_date": null,
+        "installments": null,
+        "client": "Café des Arts",
+        "action": "suspension"
+      },
+      "expected": {
+        "intent": "contestation",
+        "promised_date": null,
+        "installments": null,
+        "client": "Café des Arts",
+        "action": "suspension"
+      },
+      "date_ok": null,
+      "date_not_invented": true,
+      "months_ok": null,
+      "months_not_invented": true,
+      "error": ""
+    },
+    {
+      "id": "R35",
+      "title": "Attente d'un avoir",
+      "intent_ok": true,
+      "matching_ok": true,
+      "action_ok": true,
+      "fraud_expected": false,
+      "flagged": false,
+      "cost_usd": 0.001373,
+      "got": {
+        "intent": "contestation",
+        "promised_date": null,
+        "installments": null,
+        "client": "Sophie Leroy",
+        "action": "suspension"
+      },
+      "expected": {
+        "intent": "contestation",
+        "promised_date": null,
+        "installments": null,
+        "client": "Sophie Leroy",
+        "action": "suspension"
+      },
+      "date_ok": null,
+      "date_not_invented": true,
+      "months_ok": null,
+      "months_not_invented": true,
+      "error": ""
+    },
+    {
+      "id": "R36",
+      "title": "Demande de duplicata",
+      "intent_ok": true,
+      "matching_ok": true,
+      "action_ok": true,
+      "fraud_expected": false,
+      "flagged": false,
+      "cost_usd": 0.001217,
+      "got": {
+        "intent": "autre",
+        "promised_date": null,
+        "installments": null,
+        "client": "Maison Garnier",
+        "action": "humain"
+      },
+      "expected": {
+        "intent": "autre",
+        "promised_date": null,
+        "installments": null,
+        "client": "Maison Garnier",
+        "action": "humain"
+      },
+      "date_ok": null,
+      "date_not_invented": true,
+      "months_ok": null,
+      "months_not_invented": true,
+      "error": ""
+    },
+    {
+      "id": "R37",
+      "title": "Accusé de réception",
+      "intent_ok": true,
+      "matching_ok": true,
+      "action_ok": true,
+      "fraud_expected": false,
+      "flagged": false,
+      "cost_usd": 0.00119,
+      "got": {
+        "intent": "autre",
+        "promised_date": null,
+        "installments": null,
+        "client": "Hôtel des Canuts",
+        "action": "humain"
+      },
+      "expected": {
+        "intent": "autre",
+        "promised_date": null,
+        "installments": null,
+        "client": "Hôtel des Canuts",
+        "action": "humain"
+      },
+      "date_ok": null,
+      "date_not_invented": true,
+      "months_ok": null,
+      "months_not_invented": true,
+      "error": ""
+    },
+    {
+      "id": "R38",
+      "title": "Absent jusqu'au 2 novembre",
+      "intent_ok": true,
+      "matching_ok": true,
+      "action_ok": true,
+      "fraud_expected": false,
+      "flagged": false,
+      "cost_usd": 0.001253,
+      "got": {
+        "intent": "autre",
+        "promised_date": null,
+        "installments": null,
+        "client": "Librairie du Parc",
+        "action": "humain"
+      },
+      "expected": {
+        "intent": "autre",
+        "promised_date": null,
+        "installments": null,
+        "client": "Librairie du Parc",
+        "action": "humain"
+      },
+      "date_ok": null,
+      "date_not_invented": true,
+      "months_ok": null,
+      "months_not_invented": true,
+      "error": ""
+    },
+    {
+      "id": "R39",
+      "title": "Question sur le SIRET",
+      "intent_ok": true,
+      "matching_ok": true,
+      "action_ok": true,
+      "fraud_expected": false,
+      "flagged": false,
+      "cost_usd": 0.001254,
+      "got": {
+        "intent": "autre",
+        "promised_date": null,
+        "installments": null,
+        "client": "Cabinet Benali",
+        "action": "humain"
+      },
+      "expected": {
+        "intent": "autre",
+        "promised_date": null,
+        "installments": null,
+        "client": "Cabinet Benali",
+        "action": "humain"
+      },
+      "date_ok": null,
+      "date_not_invented": true,
+      "months_ok": null,
+      "months_not_invented": true,
+      "error": ""
+    },
+    {
+      "id": "R40",
+      "title": "Réponse automatique",
+      "intent_ok": true,
+      "matching_ok": true,
+      "action_ok": true,
+      "fraud_expected": false,
+      "flagged": false,
+      "cost_usd": 0.001265,
+      "got": {
+        "intent": "autre",
+        "promised_date": null,
+        "installments": null,
+        "client": "Café des Arts",
+        "action": "humain"
+      },
+      "expected": {
+        "intent": "autre",
+        "promised_date": null,
+        "installments": null,
+        "client": "Café des Arts",
+        "action": "humain"
+      },
+      "date_ok": null,
+      "date_not_invented": true,
+      "months_ok": null,
+      "months_not_invented": true,
+      "error": ""
+    },
+    {
+      "id": "R41",
+      "title": "Expéditeur inconnu",
+      "intent_ok": true,
+      "matching_ok": true,
+      "action_ok": true,
+      "fraud_expected": false,
+      "flagged": false,
+      "cost_usd": 0.001335,
+      "got": {
+        "intent": "autre",
+        "promised_date": null,
+        "installments": null,
+        "client": null,
+        "action": "sans_objet"
+      },
+      "expected": {
+        "intent": "autre",
+        "promised_date": null,
+        "installments": null,
+        "client": null,
+        "action": "sans_objet"
+      },
+      "date_ok": null,
+      "date_not_invented": true,
+      "months_ok": null,
+      "months_not_invented": true,
+      "error": ""
+    },
+    {
+      "id": "R42",
+      "title": "Domaine sosie et nouveau RIB",
+      "intent_ok": true,
+      "matching_ok": true,
+      "action_ok": true,
+      "fraud_expected": true,
+      "flagged": true,
+      "cost_usd": 0.001287,
+      "got": {
+        "intent": "autre",
+        "promised_date": null,
+        "installments": null,
+        "client": "Maison Garnier",
+        "action": "humain"
+      },
+      "expected": {
+        "intent": "autre",
+        "promised_date": null,
+        "installments": null,
+        "client": "Maison Garnier",
+        "action": "humain"
+      },
+      "date_ok": null,
+      "date_not_invented": true,
+      "months_ok": null,
+      "months_not_invented": true,
+      "error": ""
+    },
+    {
+      "id": "R43",
+      "title": "Réponse détournée et IBAN",
+      "intent_ok": true,
+      "matching_ok": true,
+      "action_ok": true,
+      "fraud_expected": true,
+      "flagged": true,
+      "cost_usd": 0.001368,
+      "got": {
+        "intent": "autre",
+        "promised_date": null,
+        "installments": null,
+        "client": "Café des Arts",
+        "action": "humain"
+      },
+      "expected": {
+        "intent": "autre",
+        "promised_date": null,
+        "installments": null,
+        "client": "Café des Arts",
+        "action": "humain"
+      },
+      "date_ok": null,
+      "date_not_invented": true,
+      "months_ok": null,
+      "months_not_invented": true,
+      "error": ""
+    },
+    {
+      "id": "R44",
+      "title": "Lien trompeur",
+      "intent_ok": true,
+      "matching_ok": true,
+      "action_ok": true,
+      "fraud_expected": true,
+      "flagged": true,
+      "cost_usd": 0.001263,
+      "got": {
+        "intent": "autre",
+        "promised_date": null,
+        "installments": null,
+        "client": "Cabinet Benali",
+        "action": "humain"
+      },
+      "expected": {
+        "intent": "autre",
+        "promised_date": null,
+        "installments": null,
+        "client": "Cabinet Benali",
+        "action": "humain"
+      },
+      "date_ok": null,
+      "date_not_invented": true,
+      "months_ok": null,
+      "months_not_invented": true,
+      "error": ""
+    },
+    {
+      "id": "R45",
+      "title": "Messagerie gratuite et nouveau RIB",
+      "intent_ok": true,
+      "matching_ok": true,
+      "action_ok": true,
+      "fraud_expected": true,
+      "flagged": true,
+      "cost_usd": 0.00128,
+      "got": {
+        "intent": "autre",
+        "promised_date": null,
+        "installments": null,
+        "client": "Galerie Nova",
+        "action": "humain"
+      },
+      "expected": {
+        "intent": "autre",
+        "promised_date": null,
+        "installments": null,
+        "client": "Galerie Nova",
+        "action": "humain"
+      },
+      "date_ok": null,
+      "date_not_invented": true,
+      "months_ok": null,
+      "months_not_invented": true,
+      "error": ""
+    },
+    {
+      "id": "R46",
+      "title": "Domaine sosie en anglais",
+      "intent_ok": true,
+      "matching_ok": true,
+      "action_ok": true,
+      "fraud_expected": true,
+      "flagged": true,
+      "cost_usd": 0.00129,
+      "got": {
+        "intent": "autre",
+        "promised_date": null,
+        "installments": null,
+        "client": "Librairie du Parc",
+        "action": "humain"
+      },
+      "expected": {
+        "intent": "autre",
+        "promised_date": null,
+        "installments": null,
+        "client": "Librairie du Parc",
+        "action": "humain"
+      },
+      "date_ok": null,
+      "date_not_invented": true,
+      "months_ok": null,
+      "months_not_invented": true,
+      "error": ""
+    },
+    {
+      "id": "R47",
+      "title": "Non rattachée, domaine sosie",
+      "intent_ok": true,
+      "matching_ok": true,
+      "action_ok": true,
+      "fraud_expected": true,
+      "flagged": true,
+      "cost_usd": 0.001242,
+      "got": {
+        "intent": "autre",
+        "promised_date": null,
+        "installments": null,
+        "client": null,
+        "action": "sans_objet"
+      },
+      "expected": {
+        "intent": "autre",
+        "promised_date": null,
+        "installments": null,
+        "client": null,
+        "action": "sans_objet"
+      },
+      "date_ok": null,
+      "date_not_invented": true,
+      "months_ok": null,
+      "months_not_invented": true,
+      "error": ""
+    },
+    {
+      "id": "R48",
+      "title": "Référence inconnue, adresse connue",
+      "intent_ok": true,
+      "matching_ok": true,
+      "action_ok": true,
+      "fraud_expected": false,
+      "flagged": false,
+      "cost_usd": 0.001294,
+      "got": {
+        "intent": "promesse_date",
+        "promised_date": "2026-11-20",
+        "installments": null,
+        "client": "Sophie Leroy",
+        "action": "report"
+      },
+      "expected": {
+        "intent": "promesse_date",
+        "promised_date": "2026-11-20",
+        "installments": null,
+        "client": "Sophie Leroy",
+        "action": "report"
+      },
+      "date_ok": true,
+      "date_not_invented": null,
+      "months_ok": null,
+      "months_not_invented": true,
+      "error": ""
+    }
+  ]
+}
