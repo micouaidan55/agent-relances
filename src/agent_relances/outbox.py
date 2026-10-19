@@ -21,16 +21,24 @@ def with_reference(subject: str, ref: str) -> str:
     return f"{subject} [Réf. {ref}]"
 
 
-def save_reminder_eml(outbox: Path, reminder_id: int, client: Client, subject: str, body: str) -> str:
+def _write_eml(outbox: Path, filename: str, marker: str, client: Client, subject: str, body: str) -> str:
     message = EmailMessage()
     message["To"] = formataddr((client.contact, client.email)) if client.contact else client.email
     message["Subject"] = subject
     message["Date"] = formatdate(localtime=True)
     message["X-Unsent"] = "1"  # les clients mail ouvrent le fichier comme un brouillon modifiable
-    message["X-Agent-Relances"] = f"relance-{reminder_id}"
+    message["X-Agent-Relances"] = marker
     message.set_content(body)
     outbox = Path(outbox)
     outbox.mkdir(parents=True, exist_ok=True)
-    path = outbox / f"relance_{reminder_id:05d}.eml"
+    path = outbox / filename
     path.write_bytes(message.as_bytes())
     return str(path)
+
+
+def save_reminder_eml(outbox: Path, reminder_id: int, client: Client, subject: str, body: str) -> str:
+    return _write_eml(outbox, f"relance_{reminder_id:05d}.eml", f"relance-{reminder_id}", client, subject, body)
+
+
+def save_plan_eml(outbox: Path, plan_id: int, client: Client, subject: str, body: str) -> str:
+    return _write_eml(outbox, f"echeancier_{plan_id:05d}.eml", f"echeancier-{plan_id}", client, subject, body)

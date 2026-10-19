@@ -2,6 +2,8 @@
 
 import re
 import unicodedata
+from collections.abc import Sequence
+from datetime import date
 from decimal import Decimal
 
 from agent_relances.formatting import date_fr
@@ -153,4 +155,32 @@ def check_draft(draft: ReminderDraft, due: DueReminder) -> list[str]:
         problems.append("Mention légale de l'indemnité forfaitaire absente")
     if not due.legal_notice and has_notice:
         problems.append("Mention légale de l'indemnité forfaitaire non prévue pour ce palier ou ce client")
+    return problems
+
+
+def check_plan_draft(draft: ReminderDraft, amounts: list[Decimal], total: Decimal | None,
+                     dates: list[date] | None, invoice_numbers: Sequence[str] = ()) -> list[str]:
+    """Montants = exactement les mensualités et le total ; dates = exactement celles de l'échéancier, ou aucune."""
+    text = f"{draft.subject}\n{draft.body}".translate(_SPACES)
+    for number in invoice_numbers:   # les numéros de facture contiennent des chiffres et des « / » : on les retire
+        text = _invoice_pattern(number).sub(" ", text)
+
+    found_amounts = amounts_in(text)
+    expected_amounts = set(amounts) | ({total} if total is not None else set())
+    problems = [f"Montant absent : {_amount_label(a)}" for a in sorted(expected_amounts - found_amounts)]
+    problems += [f"Montant non prévu : {_amount_label(a)}" for a in sorted(found_amounts - expected_amounts)]
+    problems += [f"Pourcentage non prévu : {m[0].strip()}" for m in _PERCENT.finditer(text)]
+
+    found_dates = dates_in(text)
+    expected_dates = dates or []
+
+    def planned(found: tuple[int, int, int | None]) -> bool:
+        return any((found[0], found[1]) == (d.day, d.month) and found[2] in (None, d.year) for d in expected_dates)
+
+    for d in expected_dates:
+        if not any((f[0], f[1]) == (d.day, d.month) and f[2] in (None, d.year) for f in found_dates):
+            problems.append(f"Échéance absente : {date_fr(d)}")
+    for f in sorted(found_dates, key=lambda d: (d[2] or 0, d[1], d[0])):
+        if not planned(f):
+            problems.append(f"Date non prévue : {_date_label(f)}")
     return problems

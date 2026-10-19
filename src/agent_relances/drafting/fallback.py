@@ -1,7 +1,8 @@
 """Modèle de texte de secours : déterministe, utilisé quand le modèle échoue ou que la clé d'API manque."""
 
 from agent_relances.formatting import date_fr, euros
-from agent_relances.models import DueReminder, ReminderDraft, Stage, Tone
+from agent_relances.models import Client, DueReminder, Plan, ReminderDraft, Stage, Tone
+from agent_relances.rules.installments import FIRST_DUE_DAYS
 from agent_relances.rules.legal import LEGAL_NOTICE
 
 _SUBJECTS = {
@@ -49,3 +50,35 @@ def fallback_draft(due: DueReminder, company: str) -> ReminderDraft:
         paragraphs.append(LEGAL_NOTICE)
     paragraphs += [_CLOSINGS[due.tone], f"Cordialement,\n{company}"]
     return ReminderDraft(subject=_SUBJECTS[due.stage].format(**words), body="\n\n".join(paragraphs))
+
+
+def _plan_lines(plan: Plan) -> list[str]:
+    ordered = sorted(plan.installments, key=lambda i: i.number)
+    return [f"- mensualité {i.number} : {euros(i.amount)}" + (f", le {date_fr(i.due_date)}" if i.due_date else "")
+            for i in ordered]
+
+
+def fallback_proposal(plan: Plan, client: Client, company: str, requested: int | None) -> ReminderDraft:
+    count = len(plan.installments)
+    asked = (f"Vous nous demandiez {requested} mois ; selon nos conditions, nous pouvons vous proposer "
+             f"{count} mensualités. " if requested and requested != count else "")
+    paragraphs = [
+        f"Bonjour {client.contact}," if client.contact else "Bonjour,",
+        f"{asked}Pour régler les {euros(plan.total)} TTC restant dus, nous vous proposons un échéancier en "
+        f"{count} mensualités :\n" + "\n".join(_plan_lines(plan)),
+        f"La première mensualité serait due {FIRST_DUE_DAYS} jours après votre accord, puis chaque mois à la même "
+        "date. Pour accepter, il suffit de répondre à ce message.",
+        f"Cordialement,\n{company}",
+    ]
+    return ReminderDraft(subject="Proposition d'échéancier de paiement", body="\n\n".join(paragraphs))
+
+
+def fallback_confirmation(plan: Plan, client: Client, company: str) -> ReminderDraft:
+    paragraphs = [
+        f"Bonjour {client.contact}," if client.contact else "Bonjour,",
+        f"Nous vous confirmons l'échéancier convenu pour le règlement de {euros(plan.total)} TTC :\n"
+        + "\n".join(_plan_lines(plan)),
+        "Nous vous remercions par avance.",
+        f"Cordialement,\n{company}",
+    ]
+    return ReminderDraft(subject="Confirmation de votre échéancier de paiement", body="\n\n".join(paragraphs))
