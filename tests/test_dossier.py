@@ -97,6 +97,7 @@ def test_remaining_after_received_installments(world):
     assert result.remaining_due == D("750.25")
     assert "750,25 €" in text and "Reste dû" in text
     assert "reçue le 20/11/2026" in text and "reçue" in text.lower() and "manquée" in text.lower()
+    assert "Échéancier (en cours)" in text and "en_cours" not in text
 
 
 def test_files_copied_and_missing_listed(world):

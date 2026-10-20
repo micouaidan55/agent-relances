@@ -17,7 +17,7 @@ from agent_relances.drafting.checker import check_plan_draft
 from agent_relances.formatting import date_fr, euros
 from agent_relances.metrics import dashboard
 from agent_relances.models import (
-    STAGE_LABELS, ActionKind, Client, DraftSource, Plan, PlanStatus, Profile, ReminderStatus, ReplyIntent,
+    PLAN_STATUS_LABELS, STAGE_LABELS, ActionKind, Client, DraftSource, Plan, PlanStatus, Profile, ReminderStatus, ReplyIntent,
     ReplyStatus, Tone, client_key,
 )
 from agent_relances.outbox import reference, save_plan_eml
@@ -56,10 +56,6 @@ ACTION_LABELS = {
 REPLY_STATUS_LABELS = {
     ReplyStatus.TO_REVIEW: "À traiter", ReplyStatus.APPLIED: "Appliquée", ReplyStatus.DISMISSED: "Classée",
     ReplyStatus.UNMATCHED: "Non rattachée",
-}
-PLAN_STATUS_LABELS = {
-    PlanStatus.PROPOSED: "Proposé", PlanStatus.ACTIVE: "En cours", PlanStatus.SETTLED: "Soldé",
-    PlanStatus.BROKEN: "Rompu", PlanStatus.CANCELLED: "Annulé",
 }
 HUMAN_CONFIRM_LABEL = "Suspendre les relances et traiter moi-même"
 NO_API_KEY_REPLIES = "Clé d'API absente : réponses enregistrées sans lecture automatique, à traiter par un humain."

@@ -16,7 +16,7 @@ from reportlab.lib.units import cm
 from reportlab.platypus import Paragraph, SimpleDocTemplate, Spacer, Table, TableStyle
 
 from agent_relances.formatting import date_fr, euros
-from agent_relances.models import Client, OverdueInvoice, Plan, PlanStatus, ReminderStatus
+from agent_relances.models import PLAN_STATUS_LABELS, Client, OverdueInvoice, Plan, PlanStatus, ReminderStatus
 from agent_relances.outbox import _write_eml
 from agent_relances.sources import InvoiceSource
 from agent_relances.storage.recovery import RecoveryStore
@@ -154,7 +154,7 @@ def _write_pdf(path, client, invoices, total, remaining, timeline, replies, plan
         story.append(_p("Aucune réponse du client.", body))
 
     if plan is not None:
-        story.append(_p(f"Échéancier ({plan.status.value})", h))
+        story.append(_p(f"Échéancier ({PLAN_STATUS_LABELS[plan.status].lower()})", h))
         if plan.exception_reason:
             story.append(_p(f"Dérogation exceptionnelle au plafond de 4 mensualités ({len(plan.installments)} "
                             f"mensualités), accordée par un humain. Motif : {plan.exception_reason}", body))

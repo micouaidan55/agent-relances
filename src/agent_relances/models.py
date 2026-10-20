@@ -179,6 +179,12 @@ class PlanStatus(StrEnum):
     CANCELLED = "annule"
 
 
+PLAN_STATUS_LABELS = {
+    PlanStatus.PROPOSED: "Proposé", PlanStatus.ACTIVE: "En cours", PlanStatus.SETTLED: "Soldé",
+    PlanStatus.BROKEN: "Rompu", PlanStatus.CANCELLED: "Annulé",
+}
+
+
 class Installment(BaseModel):
     number: int
     amount: Decimal
